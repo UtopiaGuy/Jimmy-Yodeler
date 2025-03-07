@@ -1,0 +1,419 @@
+/**
+ * Jimmy Yodeler - Military Voice Procedure Trainer
+ * Training Routes
+ */
+
+const express = require('express');
+const router = express.Router();
+const { query, queryOne, insert } = require('../db');
+const jwt = require('jsonwebtoken');
+const config = require('../config');
+const scoringService = require('../services/scoringService');
+
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. No token provided.'
+      });
+    }
+    
+    const decoded = jwt.verify(token, config.JWT.SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+};
+
+/**
+ * @route GET /api/training/scenarios
+ * @desc Get all training scenarios
+ * @access Private
+ */
+router.get('/scenarios', authenticateToken, async (req, res) => {
+  try {
+    const scenarios = await query(
+      `SELECT id, title, description, difficulty, category, 
+      created_at, updated_at, is_active
+      FROM training_scenarios
+      WHERE is_active = 1
+      ORDER BY difficulty ASC, title ASC`
+    );
+    
+    res.json({
+      success: true,
+      count: scenarios.length,
+      scenarios
+    });
+  } catch (error) {
+    console.error('Get scenarios error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving training scenarios',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route GET /api/training/scenarios/:id
+ * @desc Get training scenario by ID
+ * @access Private
+ */
+router.get('/scenarios/:id', authenticateToken, async (req, res) => {
+  try {
+    const scenarioId = req.params.id;
+    
+    // Get scenario details
+    const scenario = await queryOne(
+      `SELECT id, title, description, difficulty, category, 
+      script_content, expected_responses, audio_filter_type,
+      created_at, updated_at, is_active
+      FROM training_scenarios
+      WHERE id = ? AND is_active = 1`,
+      [scenarioId]
+    );
+    
+    if (!scenario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Training scenario not found'
+      });
+    }
+    
+    // Parse JSON fields
+    scenario.script_content = JSON.parse(scenario.script_content);
+    scenario.expected_responses = JSON.parse(scenario.expected_responses);
+    
+    res.json({
+      success: true,
+      scenario
+    });
+  } catch (error) {
+    console.error('Get scenario by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving training scenario',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route POST /api/training/sessions
+ * @desc Start a new training session
+ * @access Private
+ */
+router.post('/sessions', authenticateToken, async (req, res) => {
+  try {
+    const { scenarioId, audioFilterType } = req.body;
+    
+    // Validate input
+    if (!scenarioId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Scenario ID is required'
+      });
+    }
+    
+    // Check if scenario exists
+    const scenario = await queryOne(
+      'SELECT id, title FROM training_scenarios WHERE id = ? AND is_active = 1',
+      [scenarioId]
+    );
+    
+    if (!scenario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Training scenario not found'
+      });
+    }
+    
+    // Create new session
+    const sessionId = await insert('training_sessions', {
+      user_id: req.user.id,
+      scenario_id: scenarioId,
+      audio_filter_type: audioFilterType || config.AUDIO_FILTERS.DEFAULT_FILTER,
+      status: 'in_progress',
+      started_at: new Date(),
+      score: null
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: 'Training session started',
+      session: {
+        id: sessionId,
+        scenarioId,
+        scenarioTitle: scenario.title,
+        audioFilterType: audioFilterType || config.AUDIO_FILTERS.DEFAULT_FILTER,
+        status: 'in_progress',
+        startedAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Start session error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error starting training session',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route GET /api/training/sessions
+ * @desc Get user's training sessions
+ * @access Private
+ */
+router.get('/sessions', authenticateToken, async (req, res) => {
+  try {
+    const sessions = await query(
+      `SELECT ts.id, ts.scenario_id, ts.audio_filter_type, ts.status, 
+      ts.started_at, ts.completed_at, ts.score,
+      sc.title as scenario_title, sc.difficulty, sc.category
+      FROM training_sessions ts
+      JOIN training_scenarios sc ON ts.scenario_id = sc.id
+      WHERE ts.user_id = ?
+      ORDER BY ts.started_at DESC`,
+      [req.user.id]
+    );
+    
+    res.json({
+      success: true,
+      count: sessions.length,
+      sessions
+    });
+  } catch (error) {
+    console.error('Get sessions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving training sessions',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route GET /api/training/sessions/:id
+ * @desc Get training session by ID
+ * @access Private
+ */
+router.get('/sessions/:id', authenticateToken, async (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    
+    // Get session details
+    const session = await queryOne(
+      `SELECT ts.id, ts.user_id, ts.scenario_id, ts.audio_filter_type, 
+      ts.status, ts.started_at, ts.completed_at, ts.score,
+      sc.title as scenario_title, sc.difficulty, sc.category,
+      sc.script_content, sc.expected_responses
+      FROM training_sessions ts
+      JOIN training_scenarios sc ON ts.scenario_id = sc.id
+      WHERE ts.id = ?`,
+      [sessionId]
+    );
+    
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Training session not found'
+      });
+    }
+    
+    // Check if user owns this session or is admin
+    if (session.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this session.'
+      });
+    }
+    
+    // Parse JSON fields
+    session.script_content = JSON.parse(session.script_content);
+    session.expected_responses = JSON.parse(session.expected_responses);
+    
+    // Get feedback for this session
+    const feedback = await query(
+      `SELECT id, prompt_index, user_response, expected_response, 
+      accuracy_score, feedback_text, created_at
+      FROM feedback
+      WHERE training_session_id = ?
+      ORDER BY prompt_index ASC`,
+      [sessionId]
+    );
+    
+    res.json({
+      success: true,
+      session,
+      feedback
+    });
+  } catch (error) {
+    console.error('Get session by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving training session',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route POST /api/training/sessions/:id/submit
+ * @desc Submit a response for a training session
+ * @access Private
+ */
+router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    const { promptIndex, userResponse } = req.body;
+    
+    // Validate input
+    if (promptIndex === undefined || !userResponse) {
+      return res.status(400).json({
+        success: false,
+        message: 'Prompt index and user response are required'
+      });
+    }
+    
+    // Get session details
+    const session = await queryOne(
+      `SELECT ts.id, ts.user_id, ts.scenario_id, ts.status,
+      sc.expected_responses
+      FROM training_sessions ts
+      JOIN training_scenarios sc ON ts.scenario_id = sc.id
+      WHERE ts.id = ?`,
+      [sessionId]
+    );
+    
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Training session not found'
+      });
+    }
+    
+    // Check if user owns this session
+    if (session.user_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this session.'
+      });
+    }
+    
+    // Check if session is still in progress
+    if (session.status !== 'in_progress') {
+      return res.status(400).json({
+        success: false,
+        message: 'This training session is already completed'
+      });
+    }
+    
+    // Parse expected responses
+    const expectedResponses = JSON.parse(session.expected_responses);
+    
+    // Check if prompt index is valid
+    if (promptIndex < 0 || promptIndex >= expectedResponses.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid prompt index'
+      });
+    }
+    
+    const expectedResponse = expectedResponses[promptIndex];
+    
+    // Score the response
+    const { score, feedback } = await scoringService.scoreResponse(
+      userResponse,
+      expectedResponse
+    );
+    
+    // Save feedback
+    const feedbackId = await insert('feedback', {
+      training_session_id: sessionId,
+      prompt_index: promptIndex,
+      user_response: userResponse,
+      expected_response: expectedResponse,
+      accuracy_score: score,
+      feedback_text: feedback,
+      created_at: new Date()
+    });
+    
+    // Check if this is the last prompt
+    const isLastPrompt = promptIndex === expectedResponses.length - 1;
+    
+    // If last prompt, calculate overall score and complete session
+    if (isLastPrompt) {
+      // Get all feedback for this session
+      const allFeedback = await query(
+        'SELECT accuracy_score FROM feedback WHERE training_session_id = ?',
+        [sessionId]
+      );
+      
+      // Calculate average score
+      const totalScore = allFeedback.reduce((sum, item) => sum + item.accuracy_score, 0);
+      const averageScore = Math.round((totalScore / allFeedback.length) * 100) / 100;
+      
+      // Update session
+      await query(
+        'UPDATE training_sessions SET status = ?, completed_at = NOW(), score = ? WHERE id = ?',
+        ['completed', averageScore, sessionId]
+      );
+      
+      res.json({
+        success: true,
+        message: 'Training session completed',
+        isLastPrompt: true,
+        feedback: {
+          id: feedbackId,
+          promptIndex,
+          userResponse,
+          expectedResponse,
+          accuracyScore: score,
+          feedbackText: feedback
+        },
+        sessionResult: {
+          sessionId,
+          overallScore: averageScore,
+          status: 'completed',
+          completedAt: new Date()
+        }
+      });
+    } else {
+      // Not the last prompt, just return feedback
+      res.json({
+        success: true,
+        message: 'Response submitted',
+        isLastPrompt: false,
+        feedback: {
+          id: feedbackId,
+          promptIndex,
+          userResponse,
+          expectedResponse,
+          accuracyScore: score,
+          feedbackText: feedback
+        },
+        nextPromptIndex: promptIndex + 1
+      });
+    }
+  } catch (error) {
+    console.error('Submit response error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error submitting response',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+module.exports = router;

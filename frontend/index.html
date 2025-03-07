@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jimmy Yodeler - Military Voice Procedure Trainer</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <i class="fas fa-broadcast-tower"></i>
+        <h1>Jimmy Yodeler</h1>
+      </div>
+      <div class="user-menu" id="userMenu">
+        <span id="userDisplayName">Guest</span>
+        <i class="fas fa-user-circle"></i>
+        <div class="dropdown-menu" id="userDropdown">
+          <a href="#" id="profileLink"><i class="fas fa-id-card"></i> Profile</a>
+          <a href="#" id="statsLink"><i class="fas fa-chart-bar"></i> Statistics</a>
+          <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Authentication Section -->
+      <section id="authSection" class="auth-section">
+        <div class="auth-container">
+          <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login">Login</button>
+            <button class="auth-tab" data-tab="register">Register</button>
+          </div>
+          
+          <div class="auth-form-container">
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form active">
+              <h2>Login to Jimmy Yodeler</h2>
+              <div class="form-group">
+                <label for="loginUsername">Username</label>
+                <input type="text" id="loginUsername" required>
+              </div>
+              <div class="form-group">
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Login</button>
+              <p class="form-message" id="loginMessage"></p>
+            </form>
+            
+            <!-- Registration Form -->
+            <form id="registerForm" class="auth-form">
+              <h2>Create an Account</h2>
+              <div class="form-group">
+                <label for="registerUsername">Username</label>
+                <input type="text" id="registerUsername" required>
+              </div>
+              <div class="form-group">
+                <label for="registerEmail">Email</label>
+                <input type="email" id="registerEmail" required>
+              </div>
+              <div class="form-group">
+                <label for="registerPassword">Password</label>
+                <input type="password" id="registerPassword" required>
+              </div>
+              <div class="form-group">
+                <label for="registerConfirmPassword">Confirm Password</label>
+                <input type="password" id="registerConfirmPassword" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Register</button>
+              <p class="form-message" id="registerMessage"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard Section -->
+      <section id="dashboardSection" class="dashboard-section hidden">
+        <div class="dashboard-container">
+          <h2>Welcome to Jimmy Yodeler</h2>
+          <p class="intro-text">
+            Select a training scenario below to practice military voice procedures.
+            Listen to the audio prompts and respond using your microphone.
+          </p>
+          
+          <div class="scenario-filters">
+            <div class="filter-group">
+              <label for="difficultyFilter">Difficulty:</label>
+              <select id="difficultyFilter">
+                <option value="all">All Levels</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="categoryFilter">Category:</label>
+              <select id="categoryFilter">
+                <option value="all">All Categories</option>
+                <option value="general">General</option>
+                <option value="reports">Reports</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="scenarios-list" id="scenariosList">
+            <!-- Scenarios will be loaded here dynamically -->
+            <div class="loading-indicator">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Loading scenarios...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Training Section -->
+      <section id="trainingSection" class="training-section hidden">
+        <div class="training-container">
+          <div class="training-header">
+            <h2 id="scenarioTitle">Scenario Title</h2>
+            <div class="training-controls">
+              <button id="backToDashboard" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+              </button>
+            </div>
+          </div>
+          
+          <div class="training-content">
+            <div class="scenario-info">
+              <div class="info-item">
+                <span class="info-label">Difficulty:</span>
+                <span id="scenarioDifficulty" class="info-value">Beginner</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Category:</span>
+                <span id="scenarioCategory" class="info-value">General</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Audio Filter:</span>
+                <select id="audioFilterSelect">
+                  <option value="radio">Radio</option>
+                  <option value="static">Static</option>
+                  <option value="lowpass">Low Pass</option>
+                  <option value="highpass">High Pass</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="communication-panel">
+              <div class="transcript-container">
+                <h3>Communication Transcript</h3>
+                <div id="transcriptContent" class="transcript-content">
+                  <!-- Transcript will be displayed here -->
+                </div>
+              </div>
+              
+              <div class="voice-interaction">
+                <div class="prompt-container">
+                  <h3>Current Prompt</h3>
+                  <div id="currentPrompt" class="current-prompt">
+                    <!-- Current prompt will be displayed here -->
+                  </div>
+                  <button id="playPromptBtn" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Play Prompt
+                  </button>
+                </div>
+                
+                <div class="response-container">
+                  <h3>Your Response</h3>
+                  <div id="recordingStatus" class="recording-status">
+                    <span>Click to start recording</span>
+                  </div>
+                  <button id="recordResponseBtn" class="btn btn-primary">
+                    <i class="fas fa-microphone"></i> Record Response
+                  </button>
+                  <div id="responseText" class="response-text">
+                    <!-- Transcribed response will be displayed here -->
+                  </div>
+                  <button id="submitResponseBtn" class="btn btn-success" disabled>
+                    <i class="fas fa-check"></i> Submit Response
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="feedback-panel" id="feedbackPanel">
+              <h3>Feedback</h3>
+              <div id="feedbackContent" class="feedback-content">
+                <!-- Feedback will be displayed here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Profile Section -->
+      <section id="profileSection" class="profile-section hidden">
+        <div class="profile-container">
+          <div class="section-header">
+            <h2>User Profile</h2>
+            <button id="backFromProfile" class="btn btn-secondary">
+              <i class="fas fa-arrow-left"></i> Back
+            </button>
+          </div>
+          
+          <div class="profile-content">
+            <div class="profile-info">
+              <h3>Personal Information</h3>
+              <form id="profileForm">
+                <div class="form-group">
+                  <label for="profileUsername">Username</label>
+                  <input type="text" id="profileUsername" disabled>
+                </div>
+                <div class="form-group">
+                  <label for="profileEmail">Email</label>
+                  <input type="email" id="profileEmail">
+                </div>
+                <div class="form-group">
+                  <label for="profileFirstName">First Name</label>
+                  <input type="text" id="profileFirstName">
+                </div>
+                <div class="form-group">
+                  <label for="profileLastName">Last Name</label>
+                  <input type="text" id="profileLastName">
+                </div>
+                <button type="submit" class="btn btn-primary">Update Profile</button>
+                <p class="form-message" id="profileMessage"></p>
+              </form>
+            </div>
+            
+            <div class="profile-stats">
+              <h3>Training Statistics</h3>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <span class="stat-value" id="totalSessions">0</span>
+                  <span class="stat-label">Total Sessions</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value" id="avgScore">0</span>
+                  <span class="stat-label">Average Score</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value" id="highestScore">0</span>
+                  <span class="stat-label">Highest Score</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value" id="completedScenarios">0</span>
+                  <span class="stat-label">Completed Scenarios</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="recent-sessions">
+            <h3>Recent Training Sessions</h3>
+            <div class="sessions-list" id="recentSessionsList">
+              <!-- Recent sessions will be loaded here dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Statistics Section -->
+      <section id="statsSection" class="stats-section hidden">
+        <div class="stats-container">
+          <div class="section-header">
+            <h2>Performance Statistics</h2>
+            <button id="backFromStats" class="btn btn-secondary">
+              <i class="fas fa-arrow-left"></i> Back
+            </button>
+          </div>
+          
+          <div class="stats-content">
+            <div class="stats-overview">
+              <h3>Overall Performance</h3>
+              <div class="stats-chart-container">
+                <canvas id="performanceChart"></canvas>
+              </div>
+            </div>
+            
+            <div class="improvement-areas">
+              <h3>Areas for Improvement</h3>
+              <div id="improvementList" class="improvement-list">
+                <!-- Improvement areas will be loaded here dynamically -->
+              </div>
+            </div>
+          </div>
+          
+          <div class="detailed-feedback">
+            <h3>Recent Feedback</h3>
+            <div id="recentFeedbackList" class="feedback-list">
+              <!-- Recent feedback will be loaded here dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Session Results Section -->
+      <section id="resultsSection" class="results-section hidden">
+        <div class="results-container">
+          <div class="section-header">
+            <h2>Training Session Results</h2>
+            <button id="backFromResults" class="btn btn-secondary">
+              <i class="fas fa-arrow-left"></i> Back
+            </button>
+          </div>
+          
+          <div class="results-summary">
+            <div class="score-display">
+              <div class="score-circle">
+                <span id="finalScore">0</span>
+              </div>
+              <span class="score-label">Final Score</span>
+            </div>
+            
+            <div class="session-details">
+              <div class="detail-item">
+                <span class="detail-label">Scenario:</span>
+                <span id="resultScenarioTitle" class="detail-value">Scenario Title</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Difficulty:</span>
+                <span id="resultDifficulty" class="detail-value">Beginner</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Duration:</span>
+                <span id="resultDuration" class="detail-value">0:00</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Completed:</span>
+                <span id="resultTimestamp" class="detail-value">Date/Time</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="response-breakdown">
+            <h3>Response Breakdown</h3>
+            <div id="responseBreakdownList" class="breakdown-list">
+              <!-- Response breakdown will be loaded here dynamically -->
+            </div>
+          </div>
+          
+          <div class="results-actions">
+            <button id="retryScenarioBtn" class="btn btn-primary">
+              <i class="fas fa-redo"></i> Retry Scenario
+            </button>
+            <button id="newScenarioBtn" class="btn btn-success">
+              <i class="fas fa-plus"></i> New Scenario
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>&copy; 2025 Serinova Jimmy Yodeler - Military Voice Procedure Trainer</p>
+    </footer>
+  </div>
+
+  <!-- Audio Element for Playback -->
+  <audio id="audioPlayer" style="display: none;"></audio>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+  <script src="voiceHandler.js"></script>
+  <script src="feedbackUI.js"></script>
+</body>
+</html>
