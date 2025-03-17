@@ -5,9 +5,13 @@
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
+    "start-test": "node backend/server-test.js",
     "dev": "nodemon backend/server.js",
+    "dev-test": "nodemon backend/server-test.js",
     "test": "jest",
-    "setup-db": "mysql -u root -p < database/schema.sql && mysql -u root -p < database/seed.sql"
+    "create-db": "mysql -u root -p -e \"CREATE DATABASE IF NOT EXISTS jimmy_yodeler;\"",
+    "setup-db": "mysql -u root -p jimmy_yodeler < database/schema.sql && mysql -u root -p jimmy_yodeler < database/seed.sql",
+    "setup-db-full": "npm run create-db && npm run setup-db"
   },
   "keywords": [
     "military",

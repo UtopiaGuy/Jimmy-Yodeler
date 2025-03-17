@@ -115,6 +115,39 @@ mysql -u <username> -p <database_name> < scenario_insert.sql
 
 The templates include example scenarios to help you get started. You can modify these examples or create new scenarios based on them.
 
+## Database Setup
+
+Before using these tools, ensure your MySQL database is properly set up:
+
+1. **Database Configuration**:
+   - Database Name: jimmy_yodeler
+   - Username: root
+   - Password: (empty)
+   - Host: localhost
+   - Port: 3306
+
+2. **Installing MySQL**:
+   If MySQL is not installed, you can install it using Homebrew:
+   ```bash
+   brew install mysql
+   brew services start mysql
+   ```
+
+3. **Creating the Database**:
+   ```bash
+   /opt/homebrew/Cellar/mysql/9.2.0_2/bin/mysql -u root -e "CREATE DATABASE IF NOT EXISTS jimmy_yodeler;"
+   ```
+
+4. **Setting Up the Schema**:
+   ```bash
+   /opt/homebrew/Cellar/mysql/9.2.0_2/bin/mysql -u root jimmy_yodeler < ../../database/schema.sql
+   ```
+
+5. **Loading Sample Data**:
+   ```bash
+   /opt/homebrew/Cellar/mysql/9.2.0_2/bin/mysql -u root jimmy_yodeler < ../../database/seed.sql
+   ```
+
 ## Troubleshooting
 
 If you encounter any issues:
@@ -129,7 +162,19 @@ If you encounter any issues:
 3. **Permissions**: If you can't execute the script, check the permissions:
    ```bash
    chmod +x generate_sql.sh
+   chmod +x execute_sql.sh
    chmod +x generate_scenario_sql.js
    ```
 
-4. **SQL Errors**: If the SQL execution fails, check the error message and verify that your database schema matches the expected schema.
+4. **MySQL Command Not Found**: If you get a "mysql: command not found" error, the execute_sql.sh script has been updated to use the full path to the MySQL client. If you're still having issues, you can add MySQL to your PATH:
+   ```bash
+   echo 'export PATH="/opt/homebrew/Cellar/mysql/9.2.0_2/bin:$PATH"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+5. **SQL Errors**: If the SQL execution fails, check the error message and verify that your database schema matches the expected schema.
+
+6. **Accessing MySQL Directly**: To access your database directly, you can use:
+   ```bash
+   /opt/homebrew/Cellar/mysql/9.2.0_2/bin/mysql -u root jimmy_yodeler
+   ```

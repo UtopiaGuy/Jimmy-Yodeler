@@ -20,7 +20,8 @@ read -p "Enter database name: " DB_NAME
 
 # Execute the SQL file
 echo "Executing SQL file against database $DB_NAME..."
-mysql -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" < scenario_insert.sql
+echo "Command: /opt/homebrew/Cellar/mysql/9.2.0_2/bin/mysql -u $DB_USER $DB_NAME < scenario_insert.sql"
+/opt/homebrew/Cellar/mysql/9.2.0_2/bin/mysql -u "$DB_USER" "$DB_NAME" < scenario_insert.sql
 
 # Check if the command was successful
 if [ $? -eq 0 ]; then

@@ -90,15 +90,7 @@ router.get('/scenarios/:id', authenticateToken, async (req, res) => {
       });
     }
     
-    // Parse JSON fields if they exist (for backward compatibility)
-    if (scenario.script_content) {
-      scenario.script_content = JSON.parse(scenario.script_content);
-    }
-    if (scenario.expected_responses) {
-      scenario.expected_responses = JSON.parse(scenario.expected_responses);
-    }
-    
-    // Get scenario lines
+    // Get scenario lines - this is the primary source of data now
     const scenarioLines = await query(
       `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign
        FROM scenario_lines
@@ -110,17 +102,47 @@ router.get('/scenarios/:id', authenticateToken, async (req, res) => {
     // Add scenario lines to the response
     scenario.scenario_lines = scenarioLines;
     
-    // For backward compatibility, construct script_content and expected_responses from scenario_lines
-    if (!scenario.script_content) {
-      scenario.script_content = scenarioLines
-        .filter(line => line.is_prompter)
-        .map(line => line.prompter_text);
+    // Construct script_content and expected_responses from scenario_lines
+    // This is the preferred approach now, rather than using the legacy JSON fields
+    scenario.script_content = scenarioLines
+      .filter(line => line.is_prompter)
+      .map(line => line.prompter_text);
+    
+    scenario.expected_responses = scenarioLines
+      .filter(line => !line.is_prompter)
+      .map(line => line.user_text);
+    
+    // If no scenario lines exist, fall back to legacy JSON fields (with error handling)
+    if (scenarioLines.length === 0 && scenario.script_content) {
+      console.warn(`No scenario lines found for scenario ${scenario.id}, falling back to legacy fields`);
+      
+      // Check if it's already an object (MySQL might have already parsed it)
+      if (typeof scenario.script_content === 'object') {
+        // Already an object, no need to parse
+      } else {
+        try {
+          scenario.script_content = JSON.parse(scenario.script_content);
+        } catch (error) {
+          console.warn(`Invalid JSON in script_content for scenario ${scenario.id}: ${error.message}`);
+          // Convert to array with the string as a single element
+          scenario.script_content = [scenario.script_content];
+        }
+      }
     }
     
-    if (!scenario.expected_responses) {
-      scenario.expected_responses = scenarioLines
-        .filter(line => !line.is_prompter)
-        .map(line => line.user_text);
+    if (scenarioLines.length === 0 && scenario.expected_responses) {
+      // Check if it's already an object (MySQL might have already parsed it)
+      if (typeof scenario.expected_responses === 'object') {
+        // Already an object, no need to parse
+      } else {
+        try {
+          scenario.expected_responses = JSON.parse(scenario.expected_responses);
+        } catch (error) {
+          console.warn(`Invalid JSON in expected_responses for scenario ${scenario.id}: ${error.message}`);
+          // Convert to array with the string as a single element
+          scenario.expected_responses = [scenario.expected_responses];
+        }
+      }
     }
     
     res.json({
@@ -316,15 +338,7 @@ router.get('/sessions/:id', authenticateToken, async (req, res) => {
       });
     }
     
-    // Parse JSON fields if they exist (for backward compatibility)
-    if (session.script_content) {
-      session.script_content = JSON.parse(session.script_content);
-    }
-    if (session.expected_responses) {
-      session.expected_responses = JSON.parse(session.expected_responses);
-    }
-    
-    // Get scenario lines
+    // Get scenario lines - this is the primary source of data now
     const scenarioLines = await query(
       `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign
        FROM scenario_lines
@@ -336,17 +350,47 @@ router.get('/sessions/:id', authenticateToken, async (req, res) => {
     // Add scenario lines to the response
     session.scenario_lines = scenarioLines;
     
-    // For backward compatibility, construct script_content and expected_responses from scenario_lines
-    if (!session.script_content) {
-      session.script_content = scenarioLines
-        .filter(line => line.is_prompter)
-        .map(line => line.prompter_text);
+    // Construct script_content and expected_responses from scenario_lines
+    // This is the preferred approach now, rather than using the legacy JSON fields
+    session.script_content = scenarioLines
+      .filter(line => line.is_prompter)
+      .map(line => line.prompter_text);
+    
+    session.expected_responses = scenarioLines
+      .filter(line => !line.is_prompter)
+      .map(line => line.user_text);
+    
+    // If no scenario lines exist, fall back to legacy JSON fields (with error handling)
+    if (scenarioLines.length === 0 && session.script_content) {
+      console.warn(`No scenario lines found for session ${session.id}, falling back to legacy fields`);
+      
+      // Check if it's already an object (MySQL might have already parsed it)
+      if (typeof session.script_content === 'object') {
+        // Already an object, no need to parse
+      } else {
+        try {
+          session.script_content = JSON.parse(session.script_content);
+        } catch (error) {
+          console.warn(`Invalid JSON in script_content for session ${session.id}: ${error.message}`);
+          // Convert to array with the string as a single element
+          session.script_content = [session.script_content];
+        }
+      }
     }
     
-    if (!session.expected_responses) {
-      session.expected_responses = scenarioLines
-        .filter(line => !line.is_prompter)
-        .map(line => line.user_text);
+    if (scenarioLines.length === 0 && session.expected_responses) {
+      // Check if it's already an object (MySQL might have already parsed it)
+      if (typeof session.expected_responses === 'object') {
+        // Already an object, no need to parse
+      } else {
+        try {
+          session.expected_responses = JSON.parse(session.expected_responses);
+        } catch (error) {
+          console.warn(`Invalid JSON in expected_responses for session ${session.id}: ${error.message}`);
+          // Convert to array with the string as a single element
+          session.expected_responses = [session.expected_responses];
+        }
+      }
     }
     
     // Get feedback for this session
@@ -528,7 +572,20 @@ router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
       expectedResponse = scenarioLine.user_text;
     } else {
       // Fall back to legacy expected_responses JSON field
-      const expectedResponses = JSON.parse(session.expected_responses);
+      let expectedResponses;
+      
+      // Check if it's already an object (MySQL might have already parsed it)
+      if (typeof session.expected_responses === 'object') {
+        expectedResponses = session.expected_responses;
+      } else {
+        try {
+          expectedResponses = JSON.parse(session.expected_responses);
+        } catch (error) {
+          console.warn(`Invalid JSON in expected_responses for session ${session.id}: ${error.message}`);
+          // Convert to array with the string as a single element
+          expectedResponses = [session.expected_responses];
+        }
+      }
       
       // Check if prompt index is valid
       if (promptIndex < 0 || promptIndex >= expectedResponses.length) {
@@ -581,7 +638,21 @@ router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
       isLastPrompt = promptIndex === userResponseLines[0].count - 1;
     } else if (session.expected_responses) {
       // Fall back to legacy expected_responses
-      const expectedResponses = JSON.parse(session.expected_responses);
+      let expectedResponses;
+      
+      // Check if it's already an object (MySQL might have already parsed it)
+      if (typeof session.expected_responses === 'object') {
+        expectedResponses = session.expected_responses;
+      } else {
+        try {
+          expectedResponses = JSON.parse(session.expected_responses);
+        } catch (error) {
+          console.warn(`Invalid JSON in expected_responses for session ${session.id}: ${error.message}`);
+          // Convert to array with the string as a single element
+          expectedResponses = [session.expected_responses];
+        }
+      }
+      
       isLastPrompt = promptIndex === expectedResponses.length - 1;
     }
     

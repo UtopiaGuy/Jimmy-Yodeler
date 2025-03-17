@@ -159,12 +159,8 @@ The application provides a RESTful API with the following endpoints:
 4. Push to the branch: `git push origin feature-name`
 5. Submit a pull request
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
 - OpenAI for the Whisper API
-- Military communication experts who provided guidance on proper voice procedures
-- All contributors and testers who helped improve the application
+- 38 Signal Regt Regina Signal Operators who provided guidance on proper voice procedures
