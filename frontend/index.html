@@ -151,9 +151,20 @@
                   <option value="none">None</option>
                 </select>
               </div>
+              <div class="info-item">
+                <span class="info-label">Your Callsign:</span>
+                <input type="text" id="userCallsignInput" value="Alpha-1" class="callsign-input">
+              </div>
             </div>
             
             <div class="communication-panel">
+              <div class="phase-context-container">
+                <h3>Mission Context</h3>
+                <div id="phaseContext" class="phase-context">
+                  <!-- Phase context will be displayed here -->
+                </div>
+              </div>
+              
               <div class="transcript-container">
                 <h3>Communication Transcript</h3>
                 <div id="transcriptContent" class="transcript-content">
@@ -164,6 +175,10 @@
               <div class="voice-interaction">
                 <div class="prompt-container">
                   <h3>Current Prompt</h3>
+                  <div class="prompt-header">
+                    <span class="callsign-label">From:</span>
+                    <span id="prompterCallsign" class="callsign-value">Command</span>
+                  </div>
                   <div id="currentPrompt" class="current-prompt">
                     <!-- Current prompt will be displayed here -->
                   </div>

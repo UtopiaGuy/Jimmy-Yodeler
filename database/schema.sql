@@ -4,6 +4,7 @@
 -- Drop tables if they exist (for clean setup)
 DROP TABLE IF EXISTS feedback;
 DROP TABLE IF EXISTS training_sessions;
+DROP TABLE IF EXISTS scenario_lines;
 DROP TABLE IF EXISTS training_scenarios;
 DROP TABLE IF EXISTS users;
 
@@ -27,12 +28,27 @@ CREATE TABLE training_scenarios (
   description TEXT,
   difficulty ENUM('beginner', 'intermediate', 'advanced') NOT NULL DEFAULT 'beginner',
   category VARCHAR(50) NOT NULL DEFAULT 'general',
-  script_content JSON NOT NULL COMMENT 'Array of script prompts',
-  expected_responses JSON NOT NULL COMMENT 'Array of expected responses',
+  script_content JSON COMMENT 'Legacy: Array of script prompts',
+  expected_responses JSON COMMENT 'Legacy: Array of expected responses',
   audio_filter_type VARCHAR(20) NOT NULL DEFAULT 'radio' COMMENT 'Type of audio filter to apply',
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- Create scenario_lines table for detailed scenario content
+CREATE TABLE scenario_lines (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  scenario_id INT NOT NULL,
+  line_number INT NOT NULL,
+  is_prompter BOOLEAN NOT NULL COMMENT '1 for prompter line, 0 for user line',
+  prompter_text TEXT,
+  user_text TEXT,
+  phase_context TEXT COMMENT 'Background information for the current phase of the scenario',
+  prompter_callsign VARCHAR(50) DEFAULT 'Command' COMMENT 'Callsign of the prompter for this line',
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  FOREIGN KEY (scenario_id) REFERENCES training_scenarios(id) ON DELETE CASCADE
 );
 
 -- Create training_sessions table
@@ -45,6 +61,7 @@ CREATE TABLE training_sessions (
   started_at DATETIME NOT NULL,
   completed_at DATETIME,
   score DECIMAL(5,2) COMMENT 'Score out of 100',
+  user_callsign VARCHAR(50) DEFAULT 'Alpha-1' COMMENT 'User callsign for this training session',
   FOREIGN KEY (user_id) REFERENCES users(id),
   FOREIGN KEY (scenario_id) REFERENCES training_scenarios(id)
 );
@@ -70,6 +87,8 @@ CREATE INDEX idx_feedback_training_session_id ON feedback(training_session_id);
 CREATE INDEX idx_training_scenarios_category ON training_scenarios(category);
 CREATE INDEX idx_training_scenarios_difficulty ON training_scenarios(difficulty);
 CREATE INDEX idx_training_scenarios_is_active ON training_scenarios(is_active);
+CREATE INDEX idx_scenario_lines_scenario_id ON scenario_lines(scenario_id);
+CREATE INDEX idx_scenario_lines_line_number ON scenario_lines(line_number);
 
 -- Add full-text search capability for scenarios
 ALTER TABLE training_scenarios ADD FULLTEXT INDEX ft_scenario_content(title, description);

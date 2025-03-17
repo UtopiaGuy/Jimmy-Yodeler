@@ -90,9 +90,38 @@ router.get('/scenarios/:id', authenticateToken, async (req, res) => {
       });
     }
     
-    // Parse JSON fields
-    scenario.script_content = JSON.parse(scenario.script_content);
-    scenario.expected_responses = JSON.parse(scenario.expected_responses);
+    // Parse JSON fields if they exist (for backward compatibility)
+    if (scenario.script_content) {
+      scenario.script_content = JSON.parse(scenario.script_content);
+    }
+    if (scenario.expected_responses) {
+      scenario.expected_responses = JSON.parse(scenario.expected_responses);
+    }
+    
+    // Get scenario lines
+    const scenarioLines = await query(
+      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign
+       FROM scenario_lines
+       WHERE scenario_id = ?
+       ORDER BY line_number ASC`,
+      [scenarioId]
+    );
+    
+    // Add scenario lines to the response
+    scenario.scenario_lines = scenarioLines;
+    
+    // For backward compatibility, construct script_content and expected_responses from scenario_lines
+    if (!scenario.script_content) {
+      scenario.script_content = scenarioLines
+        .filter(line => line.is_prompter)
+        .map(line => line.prompter_text);
+    }
+    
+    if (!scenario.expected_responses) {
+      scenario.expected_responses = scenarioLines
+        .filter(line => !line.is_prompter)
+        .map(line => line.user_text);
+    }
     
     res.json({
       success: true,
@@ -109,13 +138,59 @@ router.get('/scenarios/:id', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route GET /api/training/scenarios/:id/lines
+ * @desc Get scenario lines for a training scenario
+ * @access Private
+ */
+router.get('/scenarios/:id/lines', authenticateToken, async (req, res) => {
+  try {
+    const scenarioId = req.params.id;
+    
+    // Check if scenario exists
+    const scenario = await queryOne(
+      'SELECT id FROM training_scenarios WHERE id = ? AND is_active = 1',
+      [scenarioId]
+    );
+    
+    if (!scenario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Training scenario not found'
+      });
+    }
+    
+    // Get scenario lines
+    const scenarioLines = await query(
+      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign
+       FROM scenario_lines
+       WHERE scenario_id = ?
+       ORDER BY line_number ASC`,
+      [scenarioId]
+    );
+    
+    res.json({
+      success: true,
+      scenarioId,
+      scenarioLines
+    });
+  } catch (error) {
+    console.error('Get scenario lines error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving scenario lines',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
  * @route POST /api/training/sessions
  * @desc Start a new training session
  * @access Private
  */
 router.post('/sessions', authenticateToken, async (req, res) => {
   try {
-    const { scenarioId, audioFilterType } = req.body;
+    const { scenarioId, audioFilterType, userCallsign } = req.body;
     
     // Validate input
     if (!scenarioId) {
@@ -145,7 +220,8 @@ router.post('/sessions', authenticateToken, async (req, res) => {
       audio_filter_type: audioFilterType || config.AUDIO_FILTERS.DEFAULT_FILTER,
       status: 'in_progress',
       started_at: new Date(),
-      score: null
+      score: null,
+      user_callsign: userCallsign || 'Alpha-1'
     });
     
     res.status(201).json({
@@ -157,7 +233,8 @@ router.post('/sessions', authenticateToken, async (req, res) => {
         scenarioTitle: scenario.title,
         audioFilterType: audioFilterType || config.AUDIO_FILTERS.DEFAULT_FILTER,
         status: 'in_progress',
-        startedAt: new Date()
+        startedAt: new Date(),
+        userCallsign: userCallsign || 'Alpha-1'
       }
     });
   } catch (error) {
@@ -179,7 +256,7 @@ router.get('/sessions', authenticateToken, async (req, res) => {
   try {
     const sessions = await query(
       `SELECT ts.id, ts.scenario_id, ts.audio_filter_type, ts.status, 
-      ts.started_at, ts.completed_at, ts.score,
+      ts.started_at, ts.completed_at, ts.score, ts.user_callsign,
       sc.title as scenario_title, sc.difficulty, sc.category
       FROM training_sessions ts
       JOIN training_scenarios sc ON ts.scenario_id = sc.id
@@ -215,7 +292,7 @@ router.get('/sessions/:id', authenticateToken, async (req, res) => {
     // Get session details
     const session = await queryOne(
       `SELECT ts.id, ts.user_id, ts.scenario_id, ts.audio_filter_type, 
-      ts.status, ts.started_at, ts.completed_at, ts.score,
+      ts.status, ts.started_at, ts.completed_at, ts.score, ts.user_callsign,
       sc.title as scenario_title, sc.difficulty, sc.category,
       sc.script_content, sc.expected_responses
       FROM training_sessions ts
@@ -239,9 +316,38 @@ router.get('/sessions/:id', authenticateToken, async (req, res) => {
       });
     }
     
-    // Parse JSON fields
-    session.script_content = JSON.parse(session.script_content);
-    session.expected_responses = JSON.parse(session.expected_responses);
+    // Parse JSON fields if they exist (for backward compatibility)
+    if (session.script_content) {
+      session.script_content = JSON.parse(session.script_content);
+    }
+    if (session.expected_responses) {
+      session.expected_responses = JSON.parse(session.expected_responses);
+    }
+    
+    // Get scenario lines
+    const scenarioLines = await query(
+      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign
+       FROM scenario_lines
+       WHERE scenario_id = ?
+       ORDER BY line_number ASC`,
+      [session.scenario_id]
+    );
+    
+    // Add scenario lines to the response
+    session.scenario_lines = scenarioLines;
+    
+    // For backward compatibility, construct script_content and expected_responses from scenario_lines
+    if (!session.script_content) {
+      session.script_content = scenarioLines
+        .filter(line => line.is_prompter)
+        .map(line => line.prompter_text);
+    }
+    
+    if (!session.expected_responses) {
+      session.expected_responses = scenarioLines
+        .filter(line => !line.is_prompter)
+        .map(line => line.user_text);
+    }
     
     // Get feedback for this session
     const feedback = await query(
@@ -269,6 +375,85 @@ router.get('/sessions/:id', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route PATCH /api/training/sessions/:id
+ * @desc Update a training session
+ * @access Private
+ */
+router.patch('/sessions/:id', authenticateToken, async (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    const { userCallsign, audioFilterType } = req.body;
+    
+    // Get session details
+    const session = await queryOne(
+      'SELECT id, user_id, status FROM training_sessions WHERE id = ?',
+      [sessionId]
+    );
+    
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Training session not found'
+      });
+    }
+    
+    // Check if user owns this session
+    if (session.user_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not own this session.'
+      });
+    }
+    
+    // Check if session is still in progress
+    if (session.status !== 'in_progress') {
+      return res.status(400).json({
+        success: false,
+        message: 'This training session is already completed'
+      });
+    }
+    
+    // Update fields
+    const updateFields = {};
+    if (userCallsign) updateFields.user_callsign = userCallsign;
+    if (audioFilterType) updateFields.audio_filter_type = audioFilterType;
+    
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+    
+    // Build update query
+    const updateQuery = Object.keys(updateFields)
+      .map(key => `${key} = ?`)
+      .join(', ');
+    
+    const updateValues = [...Object.values(updateFields), sessionId];
+    
+    // Update session
+    await query(
+      `UPDATE training_sessions SET ${updateQuery} WHERE id = ?`,
+      updateValues
+    );
+    
+    res.json({
+      success: true,
+      message: 'Training session updated',
+      updatedFields: Object.keys(updateFields)
+    });
+  } catch (error) {
+    console.error('Update session error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating training session',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
  * @route POST /api/training/sessions/:id/submit
  * @desc Submit a response for a training session
  * @access Private
@@ -276,7 +461,7 @@ router.get('/sessions/:id', authenticateToken, async (req, res) => {
 router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
   try {
     const sessionId = req.params.id;
-    const { promptIndex, userResponse } = req.body;
+    const { promptIndex, userResponse, userCallsign } = req.body;
     
     // Validate input
     if (promptIndex === undefined || !userResponse) {
@@ -288,7 +473,7 @@ router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
     
     // Get session details
     const session = await queryOne(
-      `SELECT ts.id, ts.user_id, ts.scenario_id, ts.status,
+      `SELECT ts.id, ts.user_id, ts.scenario_id, ts.status, ts.user_callsign,
       sc.expected_responses
       FROM training_sessions ts
       JOIN training_scenarios sc ON ts.scenario_id = sc.id
@@ -319,18 +504,50 @@ router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
       });
     }
     
-    // Parse expected responses
-    const expectedResponses = JSON.parse(session.expected_responses);
-    
-    // Check if prompt index is valid
-    if (promptIndex < 0 || promptIndex >= expectedResponses.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid prompt index'
-      });
+    // Update user callsign if provided
+    if (userCallsign && userCallsign !== session.user_callsign) {
+      await query(
+        'UPDATE training_sessions SET user_callsign = ? WHERE id = ?',
+        [userCallsign, sessionId]
+      );
     }
     
-    const expectedResponse = expectedResponses[promptIndex];
+    let expectedResponse;
+    
+    // Try to get expected response from scenario_lines first
+    const scenarioLine = await queryOne(
+      `SELECT user_text
+       FROM scenario_lines
+       WHERE scenario_id = ? AND is_prompter = 0
+       ORDER BY line_number ASC
+       LIMIT 1 OFFSET ?`,
+      [session.scenario_id, promptIndex]
+    );
+    
+    if (scenarioLine) {
+      expectedResponse = scenarioLine.user_text;
+    } else {
+      // Fall back to legacy expected_responses JSON field
+      const expectedResponses = JSON.parse(session.expected_responses);
+      
+      // Check if prompt index is valid
+      if (promptIndex < 0 || promptIndex >= expectedResponses.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid prompt index'
+        });
+      }
+      
+      expectedResponse = expectedResponses[promptIndex];
+    }
+    
+    // Ensure we have an expected response
+    if (!expectedResponse) {
+      return res.status(400).json({
+        success: false,
+        message: 'Expected response not found for this prompt index'
+      });
+    }
     
     // Score the response
     const { score, feedback } = await scoringService.scoreResponse(
@@ -350,7 +567,23 @@ router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
     });
     
     // Check if this is the last prompt
-    const isLastPrompt = promptIndex === expectedResponses.length - 1;
+    let isLastPrompt = false;
+    
+    // Try to determine if this is the last prompt using scenario_lines
+    const userResponseLines = await query(
+      `SELECT COUNT(*) as count
+       FROM scenario_lines
+       WHERE scenario_id = ? AND is_prompter = 0`,
+      [session.scenario_id]
+    );
+    
+    if (userResponseLines && userResponseLines.length > 0) {
+      isLastPrompt = promptIndex === userResponseLines[0].count - 1;
+    } else if (session.expected_responses) {
+      // Fall back to legacy expected_responses
+      const expectedResponses = JSON.parse(session.expected_responses);
+      isLastPrompt = promptIndex === expectedResponses.length - 1;
+    }
     
     // If last prompt, calculate overall score and complete session
     if (isLastPrompt) {

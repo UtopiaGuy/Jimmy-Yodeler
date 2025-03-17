@@ -13,6 +13,8 @@ const appState = {
   currentSession: null,
   currentPromptIndex: 0,
   transcript: [],
+  userCallsign: 'Alpha-1',
+  prompterCallsign: 'Command',
   apiBaseUrl: 'http://localhost:3000/api' // Change this to your API URL
 };
 
@@ -51,6 +53,9 @@ const elements = {
   scenarioDifficulty: document.getElementById('scenarioDifficulty'),
   scenarioCategory: document.getElementById('scenarioCategory'),
   audioFilterSelect: document.getElementById('audioFilterSelect'),
+  userCallsignInput: document.getElementById('userCallsignInput'),
+  prompterCallsign: document.getElementById('prompterCallsign'),
+  phaseContext: document.getElementById('phaseContext'),
   transcriptContent: document.getElementById('transcriptContent'),
   currentPrompt: document.getElementById('currentPrompt'),
   playPromptBtn: document.getElementById('playPromptBtn'),
@@ -230,6 +235,7 @@ function setupEventListeners() {
   elements.recordResponseBtn.addEventListener('click', toggleRecording);
   elements.submitResponseBtn.addEventListener('click', submitResponse);
   elements.audioFilterSelect.addEventListener('change', updateAudioFilter);
+  elements.userCallsignInput.addEventListener('change', updateUserCallsign);
   
   // Profile controls
   elements.profileForm.addEventListener('submit', event => {
@@ -451,6 +457,9 @@ function startScenario(scenarioId) {
   // Set current scenario
   appState.currentScenario = scenario;
   
+  // Get user callsign
+  appState.userCallsign = elements.userCallsignInput.value || 'Alpha-1';
+  
   // Create new training session
   fetch(`${appState.apiBaseUrl}/training/sessions`, {
     method: 'POST',
@@ -460,7 +469,8 @@ function startScenario(scenarioId) {
     },
     body: JSON.stringify({
       scenarioId: scenario.id,
-      audioFilterType: elements.audioFilterSelect.value
+      audioFilterType: elements.audioFilterSelect.value,
+      userCallsign: appState.userCallsign
     })
   })
   .then(response => response.json())
@@ -518,29 +528,94 @@ function loadScenarioDetails(scenarioId) {
 }
 
 function setCurrentPrompt() {
-  if (!appState.currentScenario || !appState.currentScenario.script_content) return;
+  if (!appState.currentScenario) return;
   
-  const scriptContent = appState.currentScenario.script_content;
-  if (appState.currentPromptIndex >= scriptContent.length) {
-    // End of scenario
-    showSessionResults();
-    return;
+  // Check if we have scenario_lines
+  if (appState.currentScenario.scenario_lines && appState.currentScenario.scenario_lines.length > 0) {
+    // Find the current prompter line
+    const prompterLines = appState.currentScenario.scenario_lines.filter(line => line.is_prompter);
+    
+    if (appState.currentPromptIndex >= prompterLines.length) {
+      // End of scenario
+      showSessionResults();
+      return;
+    }
+    
+    const currentLine = prompterLines[appState.currentPromptIndex];
+    const prompt = currentLine.prompter_text;
+    
+    // Set the prompt text
+    elements.currentPrompt.textContent = prompt;
+    
+    // Set the prompter callsign
+    appState.prompterCallsign = currentLine.prompter_callsign || 'Command';
+    elements.prompterCallsign.textContent = appState.prompterCallsign;
+    
+    // Set the phase context
+    const phaseContext = currentLine.phase_context;
+    if (phaseContext) {
+      elements.phaseContext.textContent = phaseContext;
+    } else {
+      elements.phaseContext.textContent = 'No mission context available for this phase.';
+    }
+    
+    // Reset response and feedback
+    elements.responseText.textContent = '';
+    elements.submitResponseBtn.disabled = true;
+    elements.feedbackContent.innerHTML = '';
+    
+    // Add to transcript
+    addToTranscript('command', prompt, appState.prompterCallsign);
+  } 
+  // Fallback to legacy script_content if scenario_lines is not available
+  else if (appState.currentScenario.script_content) {
+    const scriptContent = appState.currentScenario.script_content;
+    if (appState.currentPromptIndex >= scriptContent.length) {
+      // End of scenario
+      showSessionResults();
+      return;
+    }
+    
+    const prompt = scriptContent[appState.currentPromptIndex];
+    elements.currentPrompt.textContent = prompt;
+    elements.prompterCallsign.textContent = 'Command';
+    appState.prompterCallsign = 'Command';
+    elements.phaseContext.textContent = 'No mission context available for this phase.';
+    elements.responseText.textContent = '';
+    elements.submitResponseBtn.disabled = true;
+    elements.feedbackContent.innerHTML = '';
+    
+    // Add to transcript
+    addToTranscript('command', prompt, 'Command');
   }
-  
-  const prompt = scriptContent[appState.currentPromptIndex];
-  elements.currentPrompt.textContent = prompt;
-  elements.responseText.textContent = '';
-  elements.submitResponseBtn.disabled = true;
-  elements.feedbackContent.innerHTML = '';
-  
-  // Add to transcript
-  addToTranscript('command', prompt);
 }
 
 function playCurrentPrompt() {
-  if (!appState.currentScenario || !appState.currentScenario.script_content) return;
+  if (!appState.currentScenario) return;
   
-  const prompt = appState.currentScenario.script_content[appState.currentPromptIndex];
+  let prompt;
+  
+  // Check if we have scenario_lines
+  if (appState.currentScenario.scenario_lines && appState.currentScenario.scenario_lines.length > 0) {
+    // Find the current prompter line
+    const prompterLines = appState.currentScenario.scenario_lines.filter(line => line.is_prompter);
+    
+    if (appState.currentPromptIndex >= prompterLines.length) {
+      return;
+    }
+    
+    prompt = prompterLines[appState.currentPromptIndex].prompter_text;
+  } 
+  // Fallback to legacy script_content if scenario_lines is not available
+  else if (appState.currentScenario.script_content) {
+    if (appState.currentPromptIndex >= appState.currentScenario.script_content.length) {
+      return;
+    }
+    
+    prompt = appState.currentScenario.script_content[appState.currentPromptIndex];
+  } else {
+    return;
+  }
   
   // In a real implementation, this would fetch the audio from the server
   // For now, we'll use the browser's TTS
@@ -548,15 +623,21 @@ function playCurrentPrompt() {
   speechSynthesis.speak(utterance);
 }
 
-function addToTranscript(sender, text) {
+function addToTranscript(sender, text, callsign) {
   // Add to state
-  appState.transcript.push({ sender, text });
+  appState.transcript.push({ sender, text, callsign });
   
   // Update UI
   const messageElement = document.createElement('div');
   messageElement.className = 'transcript-message';
+  
+  const senderDisplay = sender === 'command' ? 'Command' : 'You';
+  const callsignDisplay = callsign || (sender === 'command' ? appState.prompterCallsign : appState.userCallsign);
+  
   messageElement.innerHTML = `
-    <div class="message-sender ${sender}">${sender === 'command' ? 'Command' : 'You'}</div>
+    <div class="message-sender ${sender}">
+      <span class="message-callsign">${callsignDisplay}:</span> ${senderDisplay}
+    </div>
     <div class="message-text">${text}</div>
   `;
   
@@ -570,7 +651,7 @@ function submitResponse() {
   const userResponse = elements.responseText.textContent;
   
   // Add to transcript
-  addToTranscript('user', userResponse);
+  addToTranscript('user', userResponse, appState.userCallsign);
   
   // Submit to server
   fetch(`${appState.apiBaseUrl}/training/sessions/${appState.currentSession.id}/submit`, {
@@ -581,7 +662,8 @@ function submitResponse() {
     },
     body: JSON.stringify({
       promptIndex: appState.currentPromptIndex,
-      userResponse
+      userResponse,
+      userCallsign: appState.userCallsign
     })
   })
   .then(response => response.json())
@@ -736,11 +818,32 @@ function renderResponseBreakdown(feedback) {
       scoreClass = 'score-medium';
     }
     
+    // Get the prompt text
+    let promptText = '';
+    
+    // Try to get prompt from scenario_lines first
+    if (appState.currentScenario.scenario_lines) {
+      const prompterLines = appState.currentScenario.scenario_lines.filter(line => line.is_prompter);
+      if (item.prompt_index < prompterLines.length) {
+        promptText = prompterLines[item.prompt_index].prompter_text;
+      }
+    }
+    
+    // Fallback to script_content if needed
+    if (!promptText && appState.currentScenario.script_content) {
+      promptText = appState.currentScenario.script_content[item.prompt_index];
+    }
+    
+    // If still no prompt text, use a placeholder
+    if (!promptText) {
+      promptText = 'Prompt text not available';
+    }
+    
     const breakdownItem = document.createElement('div');
     breakdownItem.className = 'breakdown-item';
     breakdownItem.innerHTML = `
       <div class="breakdown-prompt">
-        <strong>Prompt ${index + 1}:</strong> ${appState.currentScenario.script_content[item.prompt_index]}
+        <strong>Prompt ${index + 1}:</strong> ${promptText}
       </div>
       <div class="feedback-score ${scoreClass}">${scorePercent}% Accuracy</div>
       <div class="feedback-text">${item.feedback_text}</div>
@@ -1261,6 +1364,27 @@ function updateAudioFilter() {
   // For now, we'll just update the local state
   if (appState.currentSession) {
     appState.currentSession.audioFilterType = elements.audioFilterSelect.value;
+  }
+}
+
+function updateUserCallsign() {
+  // Update the user callsign in the state
+  appState.userCallsign = elements.userCallsignInput.value || 'Alpha-1';
+  
+  // In a real implementation, this would update the callsign on the server
+  if (appState.currentSession) {
+    fetch(`${appState.apiBaseUrl}/training/sessions/${appState.currentSession.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${appState.token}`
+      },
+      body: JSON.stringify({
+        userCallsign: appState.userCallsign
+      })
+    }).catch(error => {
+      console.error('Update callsign error:', error);
+    });
   }
 }
 

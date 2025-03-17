@@ -1,0 +1,13 @@
+scenario_title,line_number,is_prompter,prompter_text,user_text,phase_context,prompter_callsign
+"Radio Check Example",1,1,"Alpha-1, this is Command. Radio check, over.",,"Initial radio check phase. Your team is beginning a patrol mission in a non-hostile area.","Command"
+"Radio Check Example",2,0,,"Command, this is Alpha-1. I read you loud and clear, over.","Initial radio check phase. Your team is beginning a patrol mission in a non-hostile area.",
+"Radio Check Example",3,1,"Alpha-1, this is Command. Send your location, over.",,"Location reporting phase. Command needs to verify your position before proceeding with the mission.","Command"
+"Radio Check Example",4,0,,"Command, this is Alpha-1. Current location grid reference 123456, over.","Location reporting phase. Command needs to verify your position before proceeding with the mission.",
+"Radio Check Example",5,1,"Roger Alpha-1. Proceed to checkpoint Bravo, over.",,"Movement order phase. You are being directed to your next objective.","Command"
+"Radio Check Example",6,0,,"Command, this is Alpha-1. Roger, moving to checkpoint Bravo, out.","Movement order phase. You are being directed to your next objective.",
+"Radio Check Example",7,1,"Command out.",,"Mission completion phase. The initial communication check is complete.","Command"
+
+"Situation Report Example",1,1,"All stations, this is Command. SITREP follows, over.",,"Initial SITREP phase. Command is preparing to deliver a situation report to all units in the area.","Command"
+"Situation Report Example",2,0,,"Command, this is Alpha-1. Roger, standing by for SITREP, over.","Initial SITREP phase. Command is preparing to deliver a situation report to all units in the area.",
+"Situation Report Example",3,1,"Alpha-1, this is Command. Send SITREP, over.",,"SITREP request phase. Command is requesting your team to provide a detailed situation report.","Command"
+"Situation Report Example",4,0,,"Command, this is Alpha-1. SITREP as follows: Location grid 123456, 3 personnel, 2 vehicles operational, 1 casualty, ammunition 80 percent, fuel 70 percent, over.","SITREP request phase. Command is requesting your team to provide a detailed situation report.",

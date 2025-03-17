@@ -493,11 +493,55 @@ button {
   margin-right: var(--spacing-xs);
 }
 
+.callsign-input {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: var(--border-radius-sm);
+  width: 100px;
+  font-family: var(--font-mono);
+}
+
+.prompt-header {
+  margin-bottom: var(--spacing-sm);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+}
+
+.callsign-label {
+  font-weight: 500;
+  margin-right: var(--spacing-xs);
+  color: var(--gray-color);
+}
+
+.callsign-value {
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
 .communication-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-lg);
   margin-bottom: var(--spacing-lg);
+}
+
+.phase-context-container {
+  grid-column: 1 / -1; /* Span across all columns */
+  background-color: #f8f9fa;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.phase-context {
+  padding: var(--spacing-md);
+  background-color: #fffde7; /* Light yellow background */
+  border: 1px solid #fff9c4;
+  border-radius: var(--border-radius-md);
+  font-style: italic;
+  color: #5d4037; /* Brown text color */
+  line-height: 1.6;
 }
 
 .transcript-container, .voice-interaction {
@@ -530,6 +574,8 @@ button {
 .message-sender {
   font-weight: 500;
   margin-bottom: var(--spacing-xs);
+  display: flex;
+  align-items: center;
 }
 
 .message-sender.command {
@@ -538,6 +584,11 @@ button {
 
 .message-sender.user {
   color: var(--accent-color);
+}
+
+.message-callsign {
+  font-weight: 700;
+  margin-right: var(--spacing-xs);
 }
 
 .message-text {
@@ -926,6 +977,10 @@ button {
   
   .communication-panel {
     grid-template-columns: 1fr;
+  }
+  
+  .phase-context-container {
+    grid-column: 1;
   }
   
   .profile-content {
