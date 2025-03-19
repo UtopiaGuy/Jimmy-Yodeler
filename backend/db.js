@@ -72,10 +72,15 @@ async function queryOne(sql, params = []) {
  */
 async function insert(table, data) {
   try {
-    const [result] = await pool.execute(
-      `INSERT INTO ${table} SET ?`,
-      [data]
-    );
+    // Build columns and placeholders for the query
+    const columns = Object.keys(data);
+    const placeholders = columns.map(() => '?').join(', ');
+    const values = Object.values(data);
+    
+    // Construct the SQL query with explicit placeholders
+    const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
+    
+    const [result] = await pool.execute(sql, values);
     return result.insertId;
   } catch (error) {
     console.error(`Error inserting into ${table}:`, error.message);

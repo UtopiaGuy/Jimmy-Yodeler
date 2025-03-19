@@ -559,17 +559,18 @@ router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
     let expectedResponse;
     
     // Try to get expected response from scenario_lines first
-    const scenarioLine = await queryOne(
+    // Fetch all user responses from scenario_lines
+    const scenarioLines = await query(
       `SELECT user_text
        FROM scenario_lines
        WHERE scenario_id = ? AND is_prompter = 0
-       ORDER BY line_number ASC
-       LIMIT 1 OFFSET ?`,
-      [session.scenario_id, promptIndex]
+       ORDER BY line_number ASC`,
+      [session.scenario_id]
     );
     
-    if (scenarioLine) {
-      expectedResponse = scenarioLine.user_text;
+    // Get the response at the specified index
+    if (scenarioLines && scenarioLines.length > promptIndex) {
+      expectedResponse = scenarioLines[promptIndex].user_text;
     } else {
       // Fall back to legacy expected_responses JSON field
       let expectedResponses;

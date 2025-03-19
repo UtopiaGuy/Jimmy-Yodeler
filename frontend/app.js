@@ -559,10 +559,9 @@ function setCurrentPrompt() {
       elements.phaseContext.textContent = 'No mission context available for this phase.';
     }
     
-    // Reset response and feedback
+    // Reset response but keep feedback until a new response is submitted
     elements.responseText.textContent = '';
     elements.submitResponseBtn.disabled = true;
-    elements.feedbackContent.innerHTML = '';
     
     // Add to transcript
     addToTranscript('command', prompt, appState.prompterCallsign);
@@ -583,7 +582,6 @@ function setCurrentPrompt() {
     elements.phaseContext.textContent = 'No mission context available for this phase.';
     elements.responseText.textContent = '';
     elements.submitResponseBtn.disabled = true;
-    elements.feedbackContent.innerHTML = '';
     
     // Add to transcript
     addToTranscript('command', prompt, 'Command');
@@ -726,6 +724,7 @@ function showFeedback(feedback) {
     </div>
   `;
   
+  // Clear previous feedback when submitting a new response
   elements.feedbackContent.innerHTML = '';
   elements.feedbackContent.appendChild(feedbackElement);
 }

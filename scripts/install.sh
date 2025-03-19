@@ -101,20 +101,34 @@ if [[ $setup_db =~ ^[Yy]$ ]]; then
   print_message "Setting up database..."
   print_message "You will be prompted for your MySQL root password"
   
-  # Run database setup script
+  # Create database if it doesn't exist
+  print_message "Step 1: Creating database 'jimmy_yodeler' if it doesn't exist..."
+  npm run create-db
+  
+  if [ $? -ne 0 ]; then
+    print_error "Failed to create database"
+    print_message "You can create the database manually by running:"
+    print_message "mysql -u root -p -e \"CREATE DATABASE IF NOT EXISTS jimmy_yodeler;\""
+    exit 1
+  fi
+  
+  print_success "Database created successfully"
+  
+  # Set up schema and seed data
+  print_message "Step 2: Setting up database schema and sample data..."
   npm run setup-db
   
   if [ $? -ne 0 ]; then
-    print_error "Failed to set up database"
+    print_error "Failed to set up database schema and sample data"
     print_message "You can set up the database manually by running:"
-    print_message "mysql -u root -p < database/schema.sql"
-    print_message "mysql -u root -p < database/seed.sql"
+    print_message "mysql -u root -p jimmy_yodeler < database/schema.sql"
+    print_message "mysql -u root -p jimmy_yodeler < database/seed.sql"
   else
-    print_success "Database set up successfully"
+    print_success "Database schema and sample data set up successfully"
   fi
 else
   print_message "Skipping database setup"
-  print_message "You can set up the database later by running: npm run setup-db"
+  print_message "You can set up the database later by running: npm run setup-db-full"
 fi
 
 # Final instructions
