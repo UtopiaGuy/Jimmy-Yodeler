@@ -151,15 +151,6 @@ The application provides a RESTful API with the following endpoints:
 
 - `GET /api/feedback/user` - Get user's feedback history and statistics
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
-
-
 ## Acknowledgments
 
 - OpenAI for the Whisper API
