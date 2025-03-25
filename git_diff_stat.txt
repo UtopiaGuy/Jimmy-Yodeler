@@ -1,9 +1,0 @@
- backend/routes/trainingRoutes.js | 275 ++++++++++++++++++++++++++++---
- database/schema.sql              |  23 ++-
- database/seed.sql                | 342 ++++++++++++++++++++++++++++++++++++++-
- frontend/app.js                  | 172 +++++++++++++++++---
- frontend/index.html              |  15 ++
- frontend/styles.css              |  55 +++++++
- package-lock.json                |  14 ++
- package.json                     |   2 +
- 8 files changed, 843 insertions(+), 55 deletions(-)
