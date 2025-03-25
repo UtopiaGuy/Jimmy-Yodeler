@@ -18,3 +18,23 @@ build/
 # Cache
 .npm
 .cache
+
+# Test files
+tests/
+backend/server-test.js
+
+# Development utility scripts
+fix_duplicates.js
+generate_sql.js
+update_database.js
+reset_scenarios.js
+test-insert.js
+update_scenarios.sql
+
+# Scenario development tools
+scripts/scenario_tools/
+
+# Temporary git files
+git_status.txt
+git_status_new.txt
+git_diff_stat.txt

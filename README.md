@@ -159,6 +159,34 @@ The application provides a RESTful API with the following endpoints:
 4. Push to the branch: `git push origin feature-name`
 5. Submit a pull request
 
+## Files Required for Running Your Own Instance
+
+The following files and directories are essential for running your own instance of Jimmy Yodeler:
+
+### Core Application
+- `frontend/` - All frontend code (HTML, CSS, JavaScript)
+- `backend/` - Main server code, models, routes, and services (excluding test files)
+- `database/schema.sql` - Database schema for setting up your database
+- `database/seed.sql` - Initial seed data for the database
+
+### Configuration
+- `.env.example` - Template for environment variables (copy to `.env` and fill in your values)
+- `package.json` - Node.js dependencies and scripts
+- `package-lock.json` - Exact versions of dependencies
+
+### Scripts
+- `scripts/install.sh` - Installation script
+- `scripts/start.sh` - Startup script
+
+### Documentation
+- `README.md` - This documentation file
+
+### Not Required (Development Only)
+The following files are for development purposes and are not needed to run the application:
+- Test files (`tests/`, `backend/server-test.js`)
+- Development utility scripts (`fix_duplicates.js`, `generate_sql.js`, etc.)
+- Scenario development tools (`scripts/scenario_tools/`)
+- Temporary git files
 
 ## Acknowledgments
 
