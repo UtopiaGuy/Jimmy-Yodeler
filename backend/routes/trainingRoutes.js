@@ -92,7 +92,7 @@ router.get('/scenarios/:id', authenticateToken, async (req, res) => {
     
     // Get scenario lines - this is the primary source of data now
     const scenarioLines = await query(
-      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign
+      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign, user_callsign
        FROM scenario_lines
        WHERE scenario_id = ?
        ORDER BY line_number ASC`,
@@ -183,7 +183,7 @@ router.get('/scenarios/:id/lines', authenticateToken, async (req, res) => {
     
     // Get scenario lines
     const scenarioLines = await query(
-      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign
+      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign, user_callsign
        FROM scenario_lines
        WHERE scenario_id = ?
        ORDER BY line_number ASC`,
@@ -340,7 +340,7 @@ router.get('/sessions/:id', authenticateToken, async (req, res) => {
     
     // Get scenario lines - this is the primary source of data now
     const scenarioLines = await query(
-      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign
+      `SELECT id, line_number, is_prompter, prompter_text, user_text, phase_context, prompter_callsign, user_callsign
        FROM scenario_lines
        WHERE scenario_id = ?
        ORDER BY line_number ASC`,
@@ -665,15 +665,23 @@ router.post('/sessions/:id/submit', authenticateToken, async (req, res) => {
         [sessionId]
       );
       
-      // Calculate average score
-      const totalScore = allFeedback.reduce((sum, item) => sum + item.accuracy_score, 0);
-      const averageScore = Math.round((totalScore / allFeedback.length) * 100) / 100;
+      console.log('All feedback items for session:', sessionId, allFeedback);
+      
+      // Calculate average score - ensure we're working with numbers
+      const totalScore = allFeedback.reduce((sum, item) => sum + parseFloat(item.accuracy_score || 0), 0);
+      const averageScore = Math.round((totalScore / Math.max(allFeedback.length, 1)) * 100) / 100;
+      
+      console.log('Total score:', totalScore);
+      console.log('Number of feedback items:', allFeedback.length);
+      console.log('Calculated average score:', averageScore);
       
       // Update session
-      await query(
+      const updateResult = await query(
         'UPDATE training_sessions SET status = ?, completed_at = NOW(), score = ? WHERE id = ?',
         ['completed', averageScore, sessionId]
       );
+      
+      console.log('Session update result:', updateResult);
       
       res.json({
         success: true,

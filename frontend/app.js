@@ -148,6 +148,12 @@ function checkAuthStatus() {
 
 // Set up all event listeners
 function setupEventListeners() {
+  // Logo home link
+  document.getElementById('homeLink').addEventListener('click', event => {
+    event.preventDefault();
+    showSection('dashboardSection');
+  });
+  
   // Auth tabs
   elements.authTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -515,8 +521,14 @@ function loadScenarioDetails(scenarioId) {
       elements.scenarioCategory.textContent = data.scenario.category.charAt(0).toUpperCase() + data.scenario.category.slice(1);
       elements.audioFilterSelect.value = data.scenario.audio_filter_type;
       
-      // Set first prompt
-      setCurrentPrompt();
+      // Special handling for Checkpoint Security Incident scenario
+      if (data.scenario.title === "Checkpoint Security Incident") {
+        console.log("Detected Checkpoint Security Incident scenario, using special handling");
+        handleCheckpointSecurityIncident(data.scenario);
+      } else {
+        // Set first prompt for other scenarios
+        setCurrentPrompt();
+      }
     } else {
       alert(data.message || 'Failed to load scenario details');
     }
@@ -527,13 +539,149 @@ function loadScenarioDetails(scenarioId) {
   });
 }
 
+// Special handling for Checkpoint Security Incident scenario
+function handleCheckpointSecurityIncident(scenario) {
+  console.log("Handling Checkpoint Security Incident scenario");
+  
+  // Get all scenario lines in order
+  const orderedLines = [...scenario.scenario_lines].sort((a, b) => a.line_number - b.line_number);
+  console.log("Ordered lines:", orderedLines);
+  
+  // Find the first prompter line
+  const firstPrompterIndex = orderedLines.findIndex(line => line.is_prompter === 1 || line.is_prompter === true);
+  console.log("First prompter index:", firstPrompterIndex);
+  
+  // Get the initial user lines
+  const initialUserLines = orderedLines.slice(0, firstPrompterIndex);
+  console.log("Initial user lines:", initialUserLines);
+  
+  // Set the phase context from the first user line
+  if (initialUserLines.length > 0) {
+    const firstUserLine = initialUserLines[0];
+    console.log("First user line:", firstUserLine);
+    if (firstUserLine.phase_context) {
+      elements.phaseContext.textContent = firstUserLine.phase_context;
+      console.log("Set phase context:", firstUserLine.phase_context);
+    }
+  }
+  
+  // Set the user callsign if provided in the first user line
+  if (initialUserLines.length > 0 && initialUserLines[0].user_callsign) {
+    appState.userCallsign = initialUserLines[0].user_callsign;
+    elements.userCallsignInput.value = initialUserLines[0].user_callsign;
+    console.log("Set user callsign:", initialUserLines[0].user_callsign);
+  }
+  
+  // Clear the response text - let the user figure out what to say
+  elements.responseText.textContent = '';
+  elements.submitResponseBtn.disabled = false;
+  
+  // Set a special prompt that indicates the user needs to initiate
+  elements.currentPrompt.textContent = "Based on the mission context, initiate communication...";
+  console.log("Set special prompt text");
+  
+  // Set the prompter callsign to empty since this is user-initiated
+  elements.prompterCallsign.textContent = "";
+  console.log("Cleared prompter callsign");
+  
+  // Store the first prompter line for later use after the user submits their first response
+  appState.firstPrompterLine = orderedLines[firstPrompterIndex];
+  console.log("Stored first prompter line:", appState.firstPrompterLine);
+  
+  // Store the expected first user line for validation
+  appState.expectedFirstUserLine = initialUserLines[0].user_text;
+  console.log("Expected first user line:", appState.expectedFirstUserLine);
+  
+  // Flag that this is a user-initiated scenario
+  appState.isUserInitiatedScenario = true;
+  console.log("Set isUserInitiatedScenario flag to true");
+  
+  // Clear the transcript
+  elements.transcriptContent.innerHTML = '';
+  appState.transcript = [];
+  console.log("Cleared transcript");
+}
+
 function setCurrentPrompt() {
   if (!appState.currentScenario) return;
   
+  console.log("Setting current prompt. Current prompt index:", appState.currentPromptIndex);
+  console.log("Current transcript length:", appState.transcript.length);
+  
   // Check if we have scenario_lines
   if (appState.currentScenario.scenario_lines && appState.currentScenario.scenario_lines.length > 0) {
+    // Get all scenario lines in order
+    const orderedLines = [...appState.currentScenario.scenario_lines].sort((a, b) => a.line_number - b.line_number);
+    console.log("Ordered lines:", orderedLines);
+    
+    // Check if this is the first time we're setting the prompt and if the scenario starts with user lines
+    if (appState.currentPromptIndex === 0 && appState.transcript.length === 0) {
+      console.log("First time setting prompt");
+      
+      // Find the first prompter line
+      const firstPrompterIndex = orderedLines.findIndex(line => line.is_prompter === 1 || line.is_prompter === true);
+      console.log("First prompter index:", firstPrompterIndex);
+      
+      // If there are user lines before the first prompter line, set the phase context
+      if (firstPrompterIndex > 0) {
+        const initialUserLines = orderedLines.slice(0, firstPrompterIndex);
+        console.log("Found initial user lines:", initialUserLines);
+        
+        // Set the phase context from the first user line
+        if (initialUserLines.length > 0) {
+          const firstUserLine = initialUserLines[0];
+          console.log("First user line:", firstUserLine);
+          if (firstUserLine.phase_context) {
+            elements.phaseContext.textContent = firstUserLine.phase_context;
+            console.log("Set phase context:", firstUserLine.phase_context);
+          }
+        }
+        
+        // Set the user callsign if provided in the first user line
+        if (initialUserLines.length > 0 && initialUserLines[0].user_callsign) {
+          appState.userCallsign = initialUserLines[0].user_callsign;
+          elements.userCallsignInput.value = initialUserLines[0].user_callsign;
+          console.log("Set user callsign:", initialUserLines[0].user_callsign);
+        }
+        
+        // For scenarios that start with user lines, we need to handle the first prompt differently
+        if (initialUserLines.length > 0 && initialUserLines[0].user_text) {
+          console.log("Scenario starts with user lines, setting special prompt");
+          
+          // Clear the response text - let the user figure out what to say
+          elements.responseText.textContent = '';
+          elements.submitResponseBtn.disabled = false;
+          
+          // Set a special prompt that indicates the user needs to initiate
+          elements.currentPrompt.textContent = "Based on the mission context, initiate communication...";
+          console.log("Set special prompt text");
+          
+          // Set the prompter callsign to empty since this is user-initiated
+          elements.prompterCallsign.textContent = "";
+          console.log("Cleared prompter callsign");
+          
+          // Store the first prompter line for later use after the user submits their first response
+          appState.firstPrompterLine = orderedLines[firstPrompterIndex];
+          console.log("Stored first prompter line:", appState.firstPrompterLine);
+          
+          // Store the expected first user line for validation
+          appState.expectedFirstUserLine = initialUserLines[0].user_text;
+          console.log("Expected first user line:", appState.expectedFirstUserLine);
+          
+          // Flag that this is a user-initiated scenario
+          appState.isUserInitiatedScenario = true;
+          console.log("Set isUserInitiatedScenario flag to true");
+          
+          // Don't add anything to the transcript yet
+          console.log("Returning early from setCurrentPrompt");
+          return;
+        }
+      }
+    }
+    
+    // Standard prompt handling for non-first prompts or scenarios that don't start with user lines
     // Find the current prompter line
-    const prompterLines = appState.currentScenario.scenario_lines.filter(line => line.is_prompter);
+    const prompterLines = appState.currentScenario.scenario_lines.filter(line => line.is_prompter === 1 || line.is_prompter === true);
     
     if (appState.currentPromptIndex >= prompterLines.length) {
       // End of scenario
@@ -551,11 +699,17 @@ function setCurrentPrompt() {
     appState.prompterCallsign = currentLine.prompter_callsign || 'Command';
     elements.prompterCallsign.textContent = appState.prompterCallsign;
     
+    // Set the user callsign if provided in the scenario line
+    if (currentLine.user_callsign) {
+      appState.userCallsign = currentLine.user_callsign;
+      elements.userCallsignInput.value = currentLine.user_callsign;
+    }
+    
     // Set the phase context
     const phaseContext = currentLine.phase_context;
     if (phaseContext) {
       elements.phaseContext.textContent = phaseContext;
-    } else {
+    } else if (!elements.phaseContext.textContent) {
       elements.phaseContext.textContent = 'No mission context available for this phase.';
     }
     
@@ -651,6 +805,47 @@ function submitResponse() {
   // Add to transcript
   addToTranscript('user', userResponse, appState.userCallsign);
   
+  // Handle user-initiated scenario first response
+  if (appState.isUserInitiatedScenario) {
+    console.log("Handling user-initiated scenario first response");
+    
+    // Check if the user's response matches the expected first user line
+    const expectedResponse = appState.expectedFirstUserLine;
+    const isCorrect = compareResponses(userResponse, expectedResponse);
+    
+    // Show feedback for the first response
+    showInitialResponseFeedback(userResponse, expectedResponse, isCorrect);
+    
+    // After the user submits their first response, show the first prompter line
+    const prompterLine = appState.firstPrompterLine;
+    const prompt = prompterLine.prompter_text;
+    
+    // Set the prompter callsign
+    appState.prompterCallsign = prompterLine.prompter_callsign || 'Command';
+    elements.prompterCallsign.textContent = appState.prompterCallsign;
+    
+    // Set the prompt text
+    elements.currentPrompt.textContent = prompt;
+    
+    // Update the phase context if available in the prompter line
+    if (prompterLine.phase_context) {
+      elements.phaseContext.textContent = prompterLine.phase_context;
+      console.log("Updated phase context:", prompterLine.phase_context);
+    }
+    
+    // Add to transcript
+    addToTranscript('command', prompt, appState.prompterCallsign);
+    
+    // Reset flag
+    appState.isUserInitiatedScenario = false;
+    
+    // Reset response
+    elements.responseText.textContent = '';
+    elements.submitResponseBtn.disabled = true;
+    
+    return;
+  }
+  
   // Submit to server
   fetch(`${appState.apiBaseUrl}/training/sessions/${appState.currentSession.id}/submit`, {
     method: 'POST',
@@ -732,6 +927,8 @@ function showFeedback(feedback) {
 function showSessionResults(sessionResult) {
   if (!appState.currentSession) return;
   
+  console.log('showSessionResults called with sessionResult:', sessionResult);
+  
   // If sessionResult is not provided, fetch it
   if (!sessionResult) {
     fetch(`${appState.apiBaseUrl}/training/sessions/${appState.currentSession.id}`, {
@@ -743,6 +940,7 @@ function showSessionResults(sessionResult) {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
+        console.log('Fetched session data:', data.session);
         displayResults(data.session, data.feedback);
       } else {
         alert(data.message || 'Failed to load session results');
@@ -754,30 +952,97 @@ function showSessionResults(sessionResult) {
     });
   } else {
     // Use provided session result
+    console.log('Using provided sessionResult, overallScore:', sessionResult.overallScore);
     displayResults({
       ...appState.currentSession,
-      score: sessionResult.overallScore,
+      score: parseFloat(sessionResult.overallScore || 0),
       completedAt: sessionResult.completedAt
     });
   }
 }
 
 function displayResults(session, feedback) {
-  // Update results UI
-  elements.finalScore.textContent = Math.round(session.score);
-  elements.resultScenarioTitle.textContent = appState.currentScenario.title;
-  elements.resultDifficulty.textContent = appState.currentScenario.difficulty.charAt(0).toUpperCase() + appState.currentScenario.difficulty.slice(1);
+  console.log('displayResults called with session:', session);
   
-  // Calculate duration
-  const startTime = new Date(session.startedAt);
-  const endTime = new Date(session.completedAt);
-  const durationMs = endTime - startTime;
-  const durationMinutes = Math.floor(durationMs / 60000);
-  const durationSeconds = Math.floor((durationMs % 60000) / 1000);
-  elements.resultDuration.textContent = `${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`;
+  // Update results UI - ensure score is a number and handle null/undefined
+  const finalScore = parseFloat(session.score || 0);
+  console.log('Final score being displayed:', finalScore);
   
-  // Format timestamp
-  elements.resultTimestamp.textContent = new Date(session.completedAt).toLocaleString();
+  // Show both actual score and max possible score (100%)
+  // Multiply by 100 to convert from decimal (0.8) to percentage (80%)
+  elements.finalScore.innerHTML = `${Math.round(finalScore * 100)}<span class="max-score">/100</span>`;
+  // Set scenario title and difficulty - ensure we have valid values
+  if (appState.currentScenario && appState.currentScenario.title) {
+    elements.resultScenarioTitle.textContent = appState.currentScenario.title;
+  } else if (session.scenarioTitle) {
+    elements.resultScenarioTitle.textContent = session.scenarioTitle;
+  } else {
+    console.error('Missing scenario title');
+    elements.resultScenarioTitle.textContent = 'Unknown Scenario';
+  }
+  
+  if (appState.currentScenario && appState.currentScenario.difficulty) {
+    elements.resultDifficulty.textContent = appState.currentScenario.difficulty.charAt(0).toUpperCase() + appState.currentScenario.difficulty.slice(1);
+  } else if (session.difficulty) {
+    elements.resultDifficulty.textContent = session.difficulty.charAt(0).toUpperCase() + session.difficulty.slice(1);
+  } else {
+    console.error('Missing difficulty');
+    elements.resultDifficulty.textContent = 'Unknown';
+  }
+  
+  // Calculate duration - ensure we have valid dates
+  console.log('Session start time:', session.startedAt);
+  console.log('Session completion time:', session.completedAt);
+  
+  if (session.startedAt && session.completedAt) {
+    try {
+      const startTime = new Date(session.startedAt);
+      const endTime = new Date(session.completedAt);
+      
+      // Ensure both dates are valid
+      if (!isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
+        const durationMs = endTime - startTime;
+        
+        // Ensure duration is positive
+        if (durationMs >= 0) {
+          const durationMinutes = Math.floor(durationMs / 60000);
+          const durationSeconds = Math.floor((durationMs % 60000) / 1000);
+          elements.resultDuration.textContent = `${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`;
+        } else {
+          console.error('Negative duration calculated:', durationMs);
+          elements.resultDuration.textContent = 'N/A';
+        }
+      } else {
+        console.error('Invalid date objects:', { startTime, endTime });
+        elements.resultDuration.textContent = 'N/A';
+      }
+    } catch (error) {
+      console.error('Error calculating duration:', error);
+      elements.resultDuration.textContent = 'N/A';
+    }
+  } else {
+    console.error('Missing date values:', { startedAt: session.startedAt, completedAt: session.completedAt });
+    elements.resultDuration.textContent = 'N/A';
+  }
+  
+  // Format timestamp - ensure we have a valid date
+  if (session.completedAt) {
+    try {
+      const completedDate = new Date(session.completedAt);
+      if (!isNaN(completedDate.getTime())) {
+        elements.resultTimestamp.textContent = completedDate.toLocaleString();
+      } else {
+        console.error('Invalid completion date:', session.completedAt);
+        elements.resultTimestamp.textContent = 'N/A';
+      }
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      elements.resultTimestamp.textContent = 'N/A';
+    }
+  } else {
+    console.error('Missing completion date');
+    elements.resultTimestamp.textContent = 'N/A';
+  }
   
   // Show response breakdown
   if (feedback) {
@@ -886,10 +1151,10 @@ function loadUserProfile() {
       elements.profileFirstName.value = data.user.firstName || '';
       elements.profileLastName.value = data.user.lastName || '';
       
-      // Update stats
+      // Update stats - multiply scores by 100 to convert from decimal (0.8) to percentage (80%)
       elements.totalSessions.textContent = data.user.stats.sessionCount;
-      elements.avgScore.textContent = data.user.stats.averageScore ? Math.round(data.user.stats.averageScore) : 0;
-      elements.highestScore.textContent = data.user.stats.highestScore ? Math.round(data.user.stats.highestScore) : 0;
+      elements.avgScore.textContent = data.user.stats.averageScore ? Math.round(data.user.stats.averageScore * 100) : 0;
+      elements.highestScore.textContent = data.user.stats.highestScore ? Math.round(data.user.stats.highestScore * 100) : 0;
       elements.completedScenarios.textContent = data.user.stats.uniqueScenarios || 0;
       
       // Load recent sessions
@@ -983,17 +1248,17 @@ function renderRecentSessions(sessions) {
   const recentSessions = sessions.slice(0, 6);
   
   elements.recentSessionsList.innerHTML = recentSessions.map(session => {
-    // Format date
-    const date = new Date(session.startedAt).toLocaleDateString();
+    // Format date - handle snake_case field names from backend
+    const date = new Date(session.started_at).toLocaleDateString();
     
-    // Format score
+    // Format score - multiply by 100 to convert from decimal (0.8) to percentage (80%)
     const scoreDisplay = session.score !== null 
-      ? `<span class="session-score">${Math.round(session.score)}%</span>`
+      ? `<span class="session-score">${Math.round(session.score * 100)}%</span>`
       : '<span class="session-status">In Progress</span>';
     
     return `
       <div class="session-card">
-        <div class="session-title">${session.scenarioTitle}</div>
+        <div class="session-title">${session.scenario_title || 'Unknown Scenario'}</div>
         <div class="session-date">${date}</div>
         ${scoreDisplay}
       </div>
@@ -1010,6 +1275,9 @@ function renderRecentSessions(sessions) {
       }
     });
   });
+  
+  // Log sessions data for debugging
+  console.log('Recent sessions data:', recentSessions);
 }
 
 function loadSessionDetails(sessionId) {
@@ -1022,18 +1290,40 @@ function loadSessionDetails(sessionId) {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
-      // Set current session and scenario
-      appState.currentSession = data.session;
-      appState.currentScenario = {
-        id: data.session.scenarioId,
-        title: data.session.scenarioTitle,
+      console.log('Received session data:', data.session);
+      
+      // Convert snake_case to camelCase for session data
+      const sessionData = {
+        id: data.session.id,
+        scenarioId: data.session.scenario_id,
+        scenarioTitle: data.session.scenario_title,
         difficulty: data.session.difficulty,
         category: data.session.category,
-        script_content: data.session.script_content
+        audioFilterType: data.session.audio_filter_type,
+        status: data.session.status,
+        startedAt: data.session.started_at,
+        completedAt: data.session.completed_at,
+        score: data.session.score,
+        userCallsign: data.session.user_callsign,
+        script_content: data.session.script_content,
+        expected_responses: data.session.expected_responses,
+        scenario_lines: data.session.scenario_lines
+      };
+      
+      console.log('Converted session data:', sessionData);
+      
+      // Set current session and scenario
+      appState.currentSession = sessionData;
+      appState.currentScenario = {
+        id: sessionData.scenarioId,
+        title: sessionData.scenarioTitle,
+        difficulty: sessionData.difficulty,
+        category: sessionData.category,
+        script_content: sessionData.script_content
       };
       
       // Display results
-      displayResults(data.session, data.feedback);
+      displayResults(sessionData, data.feedback);
     } else {
       alert(data.message || 'Failed to load session details');
     }
@@ -1068,14 +1358,113 @@ function loadUserStats() {
   });
 }
 
+// Global variable to track if a chart rendering is in progress
+let chartRenderingInProgress = false;
+
 function renderPerformanceChart(stats) {
-  if (!elements.performanceChart) return;
+  // Prevent multiple simultaneous chart renderings
+  if (chartRenderingInProgress) {
+    console.log('Chart rendering already in progress, skipping this call');
+    return;
+  }
   
-  // If Chart.js is available
-  if (window.Chart) {
-    // Destroy existing chart if it exists
+  chartRenderingInProgress = true;
+  
+  try {
+    // Check if the canvas element exists
+    if (!elements.performanceChart) {
+      console.log('Performance chart canvas not found');
+      chartRenderingInProgress = false;
+      return;
+    }
+    
+    // Check if Chart.js is available
+    if (typeof Chart === 'undefined') {
+      console.error('Chart.js library not loaded');
+      chartRenderingInProgress = false;
+      return;
+    }
+    
+    // Properly destroy any existing chart
     if (window.performanceChart) {
-      window.performanceChart.destroy();
+      try {
+        // Check if destroy method exists before calling it
+        if (typeof window.performanceChart.destroy === 'function') {
+          window.performanceChart.destroy();
+        } else {
+          console.log('Chart destroy method not available, cleaning up manually');
+          // Force cleanup by clearing the canvas
+          const ctx = elements.performanceChart.getContext('2d');
+          ctx.clearRect(0, 0, elements.performanceChart.width, elements.performanceChart.height);
+        }
+      } catch (e) {
+        console.error('Error destroying existing chart:', e);
+      } finally {
+        // Always ensure the reference is cleared
+        window.performanceChart = null;
+      }
+    }
+    
+    // Check if recentSessions exists and is an array before using map
+    if (!stats || !stats.recentSessions || !Array.isArray(stats.recentSessions) || stats.recentSessions.length === 0) {
+      console.log('No recent sessions data available for chart');
+      
+      // Create an empty chart with a "No data available" message
+      const ctx = elements.performanceChart.getContext('2d');
+      window.performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['No Data'],
+          datasets: [{
+            label: 'Session Score',
+            data: [],
+            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+            borderColor: 'rgba(52, 152, 219, 1)',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: 'Score'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Date'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              enabled: false
+            },
+            // Add a custom plugin to display a "No data" message
+            beforeDraw: function(chart) {
+              const ctx = chart.ctx;
+              ctx.save();
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.font = '16px Arial';
+              ctx.fillStyle = '#666';
+              ctx.fillText('No training data available yet', chart.width / 2, chart.height / 2);
+              ctx.restore();
+            }
+          }
+        }
+      });
+      chartRenderingInProgress = false;
+      return;
     }
     
     // Create chart data from recent sessions
@@ -1083,7 +1472,8 @@ function renderPerformanceChart(stats) {
       return new Date(session.completedAt).toLocaleDateString();
     }).reverse();
     
-    const scores = stats.recentSessions.map(session => session.score).reverse();
+    // Multiply scores by 100 to convert from decimal (0.8) to percentage (80%)
+    const scores = stats.recentSessions.map(session => session.score * 100).reverse();
     
     // Create chart
     const ctx = elements.performanceChart.getContext('2d');
@@ -1123,6 +1513,11 @@ function renderPerformanceChart(stats) {
         }
       }
     });
+  } catch (error) {
+    console.error('Error rendering performance chart:', error);
+  } finally {
+    // Always reset the flag when done
+    chartRenderingInProgress = false;
   }
 }
 
@@ -1307,56 +1702,6 @@ async function simulateTranscription(audioBlob) {
   }
 }
 
-function simulateUserResponse(expectedResponse) {
-  // This function simulates a user response that's close to the expected response
-  // In a real implementation, this would be replaced by the actual transcription
-  
-  // For demo purposes, we'll randomly decide how accurate the response should be
-  const accuracy = Math.random();
-  
-  if (accuracy > 0.8) {
-    // High accuracy - return the exact expected response
-    return expectedResponse;
-  } else if (accuracy > 0.5) {
-    // Medium accuracy - make some minor changes
-    return introduceMinorErrors(expectedResponse);
-  } else {
-    // Low accuracy - make significant changes
-    return introduceMajorErrors(expectedResponse);
-  }
-}
-
-function introduceMinorErrors(text) {
-  // Introduce minor errors like missing words or slight phrasing differences
-  const words = text.split(' ');
-  
-  // Randomly remove 1-2 words
-  const removeCount = Math.floor(Math.random() * 2) + 1;
-  for (let i = 0; i < removeCount; i++) {
-    if (words.length > 3) {
-      const indexToRemove = Math.floor(Math.random() * words.length);
-      words.splice(indexToRemove, 1);
-    }
-  }
-  
-  return words.join(' ');
-}
-
-function introduceMajorErrors(text) {
-  // Introduce major errors like completely different phrasing
-  const phrases = [
-    "I'm not sure what to say here",
-    "Can you repeat that please?",
-    "Roger that, moving to position",
-    "Copy, will proceed as instructed",
-    "Understood, over and out",
-    "This is Alpha team, standing by"
-  ];
-  
-  // Return a random phrase
-  return phrases[Math.floor(Math.random() * phrases.length)];
-}
-
 // Utility functions
 function updateAudioFilter() {
   // In a real implementation, this would update the audio filter on the server
@@ -1417,4 +1762,80 @@ function showMessage(element, message, type = 'error') {
     element.textContent = '';
     element.className = 'form-message';
   }, 5000);
+}
+
+// Compare user response with expected response
+function compareResponses(userResponse, expectedResponse) {
+  if (!userResponse || !expectedResponse) return false;
+  
+  // Normalize both responses for comparison
+  const normalizedUser = normalizeResponse(userResponse);
+  const normalizedExpected = normalizeResponse(expectedResponse);
+  
+  // Check for exact match first
+  if (normalizedUser === normalizedExpected) {
+    return true;
+  }
+  
+  // Check for similarity (contains all key parts)
+  const keyParts = extractKeyParts(normalizedExpected);
+  return keyParts.every(part => normalizedUser.includes(part));
+}
+
+// Normalize response for comparison
+function normalizeResponse(text) {
+  return text
+    .toLowerCase()
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ')                        // Replace multiple spaces with single space
+    .trim();
+}
+
+// Extract key parts from expected response
+function extractKeyParts(text) {
+  // For military voice procedure, key parts are typically:
+  // - Callsigns
+  // - Action words (e.g., "contact", "report", "over")
+  // - Key information (e.g., "checkpoint", "security incident")
+  
+  // Split by spaces and filter out common words
+  const commonWords = ['this', 'is', 'a', 'the', 'and', 'or', 'to', 'for', 'in', 'on', 'at'];
+  return text
+    .split(' ')
+    .filter(word => word.length > 2 && !commonWords.includes(word));
+}
+
+// Show feedback for initial user response
+function showInitialResponseFeedback(userResponse, expectedResponse, isCorrect) {
+  // Create feedback element
+  const feedbackElement = document.createElement('div');
+  feedbackElement.className = 'feedback-item';
+  
+  // Determine score class
+  const scoreClass = isCorrect ? 'score-high' : 'score-low';
+  const scorePercent = isCorrect ? 100 : 50;
+  
+  // Create feedback text
+  const feedbackText = isCorrect 
+    ? "Excellent! Your initial transmission follows proper voice procedure protocol."
+    : "Your initial transmission could be improved. Remember to follow proper voice procedure protocol.";
+  
+  feedbackElement.innerHTML = `
+    <div class="feedback-score ${scoreClass}">${scorePercent}% Accuracy</div>
+    <div class="feedback-text">${feedbackText}</div>
+    <div class="response-comparison">
+      <div class="user-said">
+        <strong>You said:</strong><br>
+        ${userResponse}
+      </div>
+      <div class="expected-response">
+        <strong>Expected:</strong><br>
+        ${expectedResponse}
+      </div>
+    </div>
+  `;
+  
+  // Clear previous feedback and add new feedback
+  elements.feedbackContent.innerHTML = '';
+  elements.feedbackContent.appendChild(feedbackElement);
 }

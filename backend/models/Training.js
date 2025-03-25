@@ -28,7 +28,8 @@ class Training {
         audio_filter_type: sessionData.audioFilterType || 'radio',
         status: 'in_progress',
         started_at: new Date(),
-        score: null
+        score: null,
+        user_callsign: sessionData.userCallsign || 'Alpha-1'
       });
       
       // Get created session
@@ -48,7 +49,7 @@ class Training {
     try {
       const session = await queryOne(
         `SELECT ts.id, ts.user_id, ts.scenario_id, ts.audio_filter_type, 
-        ts.status, ts.started_at, ts.completed_at, ts.score,
+        ts.status, ts.started_at, ts.completed_at, ts.score, ts.user_callsign,
         sc.title as scenario_title, sc.difficulty, sc.category
         FROM training_sessions ts
         JOIN training_scenarios sc ON ts.scenario_id = sc.id
@@ -72,7 +73,8 @@ class Training {
         status: session.status,
         startedAt: session.started_at,
         completedAt: session.completed_at,
-        score: session.score
+        score: session.score,
+        userCallsign: session.user_callsign
       };
     } catch (error) {
       console.error('Get training session error:', error);
@@ -90,7 +92,7 @@ class Training {
     try {
       let sql = `
         SELECT ts.id, ts.scenario_id, ts.audio_filter_type, ts.status, 
-        ts.started_at, ts.completed_at, ts.score,
+        ts.started_at, ts.completed_at, ts.score, ts.user_callsign,
         sc.title as scenario_title, sc.difficulty, sc.category
         FROM training_sessions ts
         JOIN training_scenarios sc ON ts.scenario_id = sc.id
@@ -132,7 +134,8 @@ class Training {
         status: session.status,
         startedAt: session.started_at,
         completedAt: session.completed_at,
-        score: session.score
+        score: session.score,
+        userCallsign: session.user_callsign
       }));
     } catch (error) {
       console.error('Get user sessions error:', error);

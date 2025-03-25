@@ -93,6 +93,18 @@ button {
   align-items: center;
 }
 
+.logo a {
+  display: flex;
+  align-items: center;
+  color: white;
+  text-decoration: none;
+}
+
+.logo a:hover {
+  color: white;
+  text-decoration: none;
+}
+
 .logo i {
   font-size: 1.8rem;
   margin-right: var(--spacing-sm);
@@ -922,12 +934,22 @@ button {
   background-color: var(--accent-color);
   color: white;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: var(--spacing-sm);
   box-shadow: var(--shadow-md);
+  text-align: center;
+  position: relative;
+}
+
+.max-score {
+  font-size: 1rem;
+  font-weight: 400;
+  display: block;
+  margin-top: -5px;
 }
 
 .score-label {

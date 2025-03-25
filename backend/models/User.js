@@ -60,7 +60,9 @@ class User {
       const user = await queryOne(
         `SELECT id, username, email, first_name, last_name, role, created_at,
         (SELECT COUNT(*) FROM training_sessions WHERE user_id = users.id) as session_count,
-        (SELECT AVG(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as avg_score
+        (SELECT AVG(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as avg_score,
+        (SELECT COUNT(DISTINCT scenario_id) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as unique_scenarios,
+        (SELECT MAX(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as highest_score
         FROM users WHERE id = ?`,
         [id]
       );
@@ -80,7 +82,9 @@ class User {
         createdAt: user.created_at,
         stats: {
           sessionCount: user.session_count,
-          averageScore: user.avg_score || 0
+          averageScore: user.avg_score || 0,
+          uniqueScenarios: user.unique_scenarios || 0,
+          highestScore: user.highest_score || 0
         }
       };
     } catch (error) {
@@ -205,7 +209,9 @@ class User {
       let sql = `
         SELECT id, username, email, first_name, last_name, role, created_at,
         (SELECT COUNT(*) FROM training_sessions WHERE user_id = users.id) as session_count,
-        (SELECT AVG(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as avg_score
+        (SELECT AVG(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as avg_score,
+        (SELECT COUNT(DISTINCT scenario_id) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as unique_scenarios,
+        (SELECT MAX(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as highest_score
         FROM users
       `;
       
@@ -244,7 +250,9 @@ class User {
         createdAt: user.created_at,
         stats: {
           sessionCount: user.session_count,
-          averageScore: user.avg_score || 0
+          averageScore: user.avg_score || 0,
+          uniqueScenarios: user.unique_scenarios || 0,
+          highestScore: user.highest_score || 0
         }
       }));
     } catch (error) {

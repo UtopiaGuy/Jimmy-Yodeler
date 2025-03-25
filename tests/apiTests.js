@@ -215,7 +215,8 @@ describe('Training API', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         scenarioId,
-        audioFilterType: 'radio'
+        audioFilterType: 'radio',
+        userCallsign: 'Bravo-2'
       })
       .expect('Content-Type', /json/)
       .expect(200);
@@ -224,6 +225,7 @@ describe('Training API', () => {
     expect(response.body.session).toBeDefined();
     expect(response.body.session.scenarioId).toBe(scenarioId);
     expect(response.body.session.status).toBe('in_progress');
+    expect(response.body.session.userCallsign).toBe('Bravo-2');
     
     // Store session ID for later tests
     sessionId = response.body.session.id;
