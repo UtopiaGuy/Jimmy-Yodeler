@@ -11,7 +11,8 @@
     "test": "jest",
     "create-db": "mysql -u root -p -e \"CREATE DATABASE IF NOT EXISTS jimmy_yodeler;\"",
     "setup-db": "mysql -u root -p jimmy_yodeler < database/schema.sql && mysql -u root -p jimmy_yodeler < database/seed.sql",
-    "setup-db-full": "npm run create-db && npm run setup-db"
+    "setup-db-full": "npm run create-db && npm run setup-db",
+    "docs": "jsdoc -c jsdoc.json"
   },
   "keywords": [
     "military",
@@ -39,7 +40,9 @@
     "validator": "^13.11.0"
   },
   "devDependencies": {
+    "docdash": "^2.0.2",
     "jest": "^29.7.0",
+    "jsdoc": "^4.0.4",
     "nodemon": "^3.0.1",
     "supertest": "^6.3.3"
   },

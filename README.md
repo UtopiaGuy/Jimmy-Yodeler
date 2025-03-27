@@ -151,42 +151,23 @@ The application provides a RESTful API with the following endpoints:
 
 - `GET /api/feedback/user` - Get user's feedback history and statistics
 
-## Contributing
+## Code Documentation
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
+The project uses JSDoc to document code functionality. All parameter documentation and function descriptions are available in a searchable HTML format.
 
-## Files Required for Running Your Own Instance
+### Accessing Documentation
 
-The following files and directories are essential for running your own instance of Jimmy Yodeler:
+1. Generate the documentation:
+   ```
+   npm run docs
+   ```
 
-### Core Application
-- `frontend/` - All frontend code (HTML, CSS, JavaScript)
-- `backend/` - Main server code, models, routes, and services (excluding test files)
-- `database/schema.sql` - Database schema for setting up your database
-- `database/seed.sql` - Initial seed data for the database
+2. Open the documentation in your browser:
+   ```
+   open docs/index.html
+   ```
 
-### Configuration
-- `.env.example` - Template for environment variables (copy to `.env` and fill in your values)
-- `package.json` - Node.js dependencies and scripts
-- `package-lock.json` - Exact versions of dependencies
-
-### Scripts
-- `scripts/install.sh` - Installation script
-- `scripts/start.sh` - Startup script
-
-### Documentation
-- `README.md` - This documentation file
-
-### Not Required (Development Only)
-The following files are for development purposes and are not needed to run the application:
-- Test files (`tests/`, `backend/server-test.js`)
-- Development utility scripts (`fix_duplicates.js`, `generate_sql.js`, etc.)
-- Scenario development tools (`scripts/scenario_tools/`)
-- Temporary git files
+The documentation provides detailed information about all modules, classes, and functions in the codebase, including parameter types and descriptions.
 
 ## Acknowledgments
 

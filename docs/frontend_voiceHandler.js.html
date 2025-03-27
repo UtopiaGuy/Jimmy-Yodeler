@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>frontend/voiceHandler.js - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Feedback.html">Feedback</a><ul class='methods'><li data-type='method'><a href="Feedback.html#.create">create</a></li><li data-type='method'><a href="Feedback.html#.getById">getById</a></li><li data-type='method'><a href="Feedback.html#.getBySessionId">getBySessionId</a></li><li data-type='method'><a href="Feedback.html#.getByUserId">getByUserId</a></li><li data-type='method'><a href="Feedback.html#.getUserErrorPatterns">getUserErrorPatterns</a></li><li data-type='method'><a href="Feedback.html#.getUserStats">getUserStats</a></li></ul></li><li><a href="Training.html">Training</a><ul class='methods'><li data-type='method'><a href="Training.html#.completeSession">completeSession</a></li><li data-type='method'><a href="Training.html#.createScenario">createScenario</a></li><li data-type='method'><a href="Training.html#.createSession">createSession</a></li><li data-type='method'><a href="Training.html#.deleteScenario">deleteScenario</a></li><li data-type='method'><a href="Training.html#.getAllScenarios">getAllScenarios</a></li><li data-type='method'><a href="Training.html#.getScenarioById">getScenarioById</a></li><li data-type='method'><a href="Training.html#.getSessionById">getSessionById</a></li><li data-type='method'><a href="Training.html#.getUserSessions">getUserSessions</a></li><li data-type='method'><a href="Training.html#.updateScenario">updateScenario</a></li></ul></li><li><a href="User.html">User</a><ul class='methods'><li data-type='method'><a href="User.html#.authenticate">authenticate</a></li><li data-type='method'><a href="User.html#.create">create</a></li><li data-type='method'><a href="User.html#.delete">delete</a></li><li data-type='method'><a href="User.html#.findAll">findAll</a></li><li data-type='method'><a href="User.html#.findById">findById</a></li><li data-type='method'><a href="User.html#.findByUsername">findByUsername</a></li><li data-type='method'><a href="User.html#.update">update</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#analyzeSessionFeedback">analyzeSessionFeedback</a></li><li><a href="global.html#analyzeTrainingSession">analyzeTrainingSession</a></li><li><a href="global.html#applyAudioFilter">applyAudioFilter</a></li><li><a href="global.html#axios">axios</a></li><li><a href="global.html#calculateSimilarity">calculateSimilarity</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#connectDB">connectDB</a></li><li><a href="global.html#express">express</a></li><li><a href="global.html#generateFeedback">generateFeedback</a></li><li><a href="global.html#generateImprovementSuggestions">generateImprovementSuggestions</a></li><li><a href="global.html#generateMilitaryAudio">generateMilitaryAudio</a></li><li><a href="global.html#generateScenarioAudio">generateScenarioAudio</a></li><li><a href="global.html#generateSpeech">generateSpeech</a></li><li><a href="global.html#getCommonErrorPatterns">getCommonErrorPatterns</a></li><li><a href="global.html#getImprovementAreas">getImprovementAreas</a></li><li><a href="global.html#insert">insert</a></li><li><a href="global.html#levenshteinDistance">levenshteinDistance</a></li><li><a href="global.html#mysql">mysql</a></li><li><a href="global.html#normalizeText">normalizeText</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#postProcessMilitaryTranscription">postProcessMilitaryTranscription</a></li><li><a href="global.html#processMilitaryAudio">processMilitaryAudio</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#queryOne">queryOne</a></li><li><a href="global.html#scoreResponse">scoreResponse</a></li><li><a href="global.html#transcribeAudio">transcribeAudio</a></li><li><a href="global.html#update">update</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">frontend/voiceHandler.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Jimmy Yodeler - Military Voice Procedure Trainer
+ * Voice Handler Module
+ * 
+ * This module handles voice recording, processing, and integration with the Whisper API.
+ * In a production environment, this would send audio to the backend for processing with Whisper.
+ * For the demo, it simulates transcription locally.
+ */
+
+// Voice Handler Class
+class VoiceHandler {
+  constructor() {
+    // Configuration
+    this.config = {
+      recordingTimeLimit: 30000, // 30 seconds max recording time
+      autoStopSilence: 2000,     // Auto-stop after 2 seconds of silence
+      silenceThreshold: -50,     // dB threshold for silence detection
+      sampleRate: 44100,         // Sample rate for audio recording
+      mimeType: 'audio/webm'     // MIME type for audio recording
+    };
+    
+    // State
+    this.isRecording = false;
+    this.mediaRecorder = null;
+    this.audioContext = null;
+    this.audioStream = null;
+    this.audioChunks = [];
+    this.recordingTimer = null;
+    this.silenceTimer = null;
+    this.audioAnalyser = null;
+    this.audioDataArray = null;
+    
+    // Callbacks
+    this.onRecordingStart = null;
+    this.onRecordingStop = null;
+    this.onTranscriptionComplete = null;
+    this.onRecordingProgress = null;
+    this.onError = null;
+    
+    // Bind methods
+    this.startRecording = this.startRecording.bind(this);
+    this.stopRecording = this.stopRecording.bind(this);
+    this.processAudio = this.processAudio.bind(this);
+    this.checkSilence = this.checkSilence.bind(this);
+    this.cleanup = this.cleanup.bind(this);
+  }
+  
+  /**
+   * Initialize the voice handler
+   * @param {Object} callbacks - Callback functions
+   */
+  init(callbacks = {}) {
+    // Set callbacks
+    this.onRecordingStart = callbacks.onRecordingStart || (() => {});
+    this.onRecordingStop = callbacks.onRecordingStop || (() => {});
+    this.onTranscriptionComplete = callbacks.onTranscriptionComplete || (() => {});
+    this.onRecordingProgress = callbacks.onRecordingProgress || (() => {});
+    this.onError = callbacks.onError || ((error) => console.error('Voice Handler Error:', error));
+    
+    // Check browser support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.onError(new Error('Your browser does not support audio recording'));
+      return false;
+    }
+    
+    // Check Web Audio API support
+    if (!window.AudioContext &amp;&amp; !window.webkitAudioContext) {
+      this.onError(new Error('Your browser does not support Web Audio API'));
+      return false;
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Start recording audio
+   * @returns {Promise&lt;boolean>} - Success status
+   */
+  async startRecording() {
+    if (this.isRecording) {
+      return false;
+    }
+    
+    try {
+      // Reset state
+      this.audioChunks = [];
+      this.isRecording = true;
+      
+      // Request microphone access
+      this.audioStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      // Set up audio context for silence detection
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const audioSource = this.audioContext.createMediaStreamSource(this.audioStream);
+      this.audioAnalyser = this.audioContext.createAnalyser();
+      this.audioAnalyser.fftSize = 256;
+      audioSource.connect(this.audioAnalyser);
+      
+      // Set up audio data array for analysis
+      const bufferLength = this.audioAnalyser.frequencyBinCount;
+      this.audioDataArray = new Uint8Array(bufferLength);
+      
+      // Create media recorder
+      this.mediaRecorder = new MediaRecorder(this.audioStream, {
+        mimeType: this.config.mimeType,
+        audioBitsPerSecond: 128000
+      });
+      
+      // Set up event handlers
+      this.mediaRecorder.addEventListener('dataavailable', (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      });
+      
+      this.mediaRecorder.addEventListener('stop', () => {
+        this.processAudio();
+      });
+      
+      // Start recording
+      this.mediaRecorder.start(100); // Collect data in 100ms chunks
+      
+      // Set up recording time limit
+      this.recordingTimer = setTimeout(() => {
+        if (this.isRecording) {
+          this.stopRecording();
+        }
+      }, this.config.recordingTimeLimit);
+      
+      // Start silence detection
+      this.startSilenceDetection();
+      
+      // Call recording start callback
+      this.onRecordingStart();
+      
+      return true;
+    } catch (error) {
+      this.onError(error);
+      this.cleanup();
+      return false;
+    }
+  }
+  
+  /**
+   * Stop recording audio
+   */
+  stopRecording() {
+    if (!this.isRecording || !this.mediaRecorder) {
+      return;
+    }
+    
+    // Stop media recorder
+    if (this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+    
+    // Stop silence detection
+    this.stopSilenceDetection();
+    
+    // Clear recording timer
+    if (this.recordingTimer) {
+      clearTimeout(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+    
+    // Update state
+    this.isRecording = false;
+    
+    // Call recording stop callback
+    this.onRecordingStop();
+  }
+  
+  /**
+   * Start silence detection
+   */
+  startSilenceDetection() {
+    // Check for silence every 100ms
+    this.silenceCheckInterval = setInterval(this.checkSilence, 100);
+  }
+  
+  /**
+   * Stop silence detection
+   */
+  stopSilenceDetection() {
+    if (this.silenceCheckInterval) {
+      clearInterval(this.silenceCheckInterval);
+      this.silenceCheckInterval = null;
+    }
+    
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+  }
+  
+  /**
+   * Check for silence in the audio stream
+   */
+  checkSilence() {
+    if (!this.audioAnalyser || !this.audioDataArray) {
+      return;
+    }
+    
+    // Get audio data
+    this.audioAnalyser.getByteFrequencyData(this.audioDataArray);
+    
+    // Calculate average volume
+    let sum = 0;
+    for (let i = 0; i &lt; this.audioDataArray.length; i++) {
+      sum += this.audioDataArray[i];
+    }
+    const average = sum / this.audioDataArray.length;
+    
+    // Convert to dB (rough approximation)
+    const volume = average === 0 ? -100 : 20 * Math.log10(average / 255);
+    
+    // Update progress callback with volume level
+    this.onRecordingProgress(volume);
+    
+    // Check if below silence threshold
+    if (volume &lt; this.config.silenceThreshold) {
+      // Start silence timer if not already started
+      if (!this.silenceTimer) {
+        this.silenceTimer = setTimeout(() => {
+          // Stop recording after silence duration
+          this.stopRecording();
+        }, this.config.autoStopSilence);
+      }
+    } else {
+      // Reset silence timer if sound detected
+      if (this.silenceTimer) {
+        clearTimeout(this.silenceTimer);
+        this.silenceTimer = null;
+      }
+    }
+  }
+  
+  /**
+   * Process recorded audio
+   */
+  processAudio() {
+    if (this.audioChunks.length === 0) {
+      this.onError(new Error('No audio data recorded'));
+      this.cleanup();
+      return;
+    }
+    
+    // Create audio blob
+    const audioBlob = new Blob(this.audioChunks, { type: this.config.mimeType });
+    
+    // In a production environment, this would send the audio to the backend
+    // For the demo, we'll simulate transcription locally
+    this.simulateTranscription(audioBlob);
+  }
+  
+  /**
+   * Send audio to Whisper API via backend
+   * @param {Blob} audioBlob - Audio data blob
+   */
+  async simulateTranscription(audioBlob) {
+    try {
+      // Create audio URL for playback
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Create form data for API request
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      
+      // Add options for military context
+      const options = {
+        model: 'whisper-1',
+        prompt: "The following audio contains military voice procedure communication. " +
+          "It may include callsigns, phonetic alphabet (Alpha, Bravo, Charlie...), " +
+          "and standard military communication protocols.",
+        language: 'en',
+        temperature: 0.2
+      };
+      formData.append('options', JSON.stringify(options));
+      
+      // Send to backend API
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Transcription failed');
+      }
+      
+      // Call transcription complete callback
+      this.onTranscriptionComplete({
+        text: data.text,
+        audioUrl: audioUrl,
+        confidence: 0.9 // API doesn't provide confidence, so we use a default
+      });
+    } catch (error) {
+      this.onError(error);
+    } finally {
+      // Clean up
+      this.cleanup();
+    }
+  }
+  
+  /**
+   * Clean up resources
+   */
+  cleanup() {
+    // Stop all tracks in the audio stream
+    if (this.audioStream) {
+      this.audioStream.getTracks().forEach(track => track.stop());
+      this.audioStream = null;
+    }
+    
+    // Close audio context
+    if (this.audioContext) {
+      if (this.audioContext.state !== 'closed') {
+        this.audioContext.close();
+      }
+      this.audioContext = null;
+    }
+    
+    // Clear timers and intervals
+    this.stopSilenceDetection();
+    
+    if (this.recordingTimer) {
+      clearTimeout(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+    
+    // Reset state
+    this.mediaRecorder = null;
+    this.audioAnalyser = null;
+    this.audioDataArray = null;
+    this.isRecording = false;
+  }
+}
+
+// Create and export a singleton instance
+const voiceHandler = new VoiceHandler();
+
+// Initialize voice handler when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+  // Elements
+  const recordButton = document.getElementById('recordResponseBtn');
+  const recordingStatus = document.getElementById('recordingStatus');
+  const responseText = document.getElementById('responseText');
+  const submitButton = document.getElementById('submitResponseBtn');
+  
+  // Initialize voice handler
+  voiceHandler.init({
+    onRecordingStart: () => {
+      // Update UI
+      recordingStatus.classList.add('active');
+      recordingStatus.innerHTML = '&lt;span>Recording...&lt;/span>';
+      recordButton.innerHTML = '&lt;i class="fas fa-stop">&lt;/i> Stop Recording';
+      recordButton.classList.add('btn-danger');
+      responseText.textContent = '';
+      submitButton.disabled = true;
+    },
+    
+    onRecordingStop: () => {
+      // Update UI
+      recordingStatus.classList.remove('active');
+      recordingStatus.innerHTML = '&lt;span>Processing...&lt;/span>';
+      recordButton.innerHTML = '&lt;i class="fas fa-microphone">&lt;/i> Record Response';
+      recordButton.classList.remove('btn-danger');
+    },
+    
+    onTranscriptionComplete: (result) => {
+      // Update UI
+      responseText.textContent = result.text;
+      recordingStatus.innerHTML = '&lt;span>Response recorded. Click Submit when ready.&lt;/span>';
+      submitButton.disabled = false;
+      
+      // Store audio URL for playback
+      if (window.appState) {
+        window.appState.lastRecordingUrl = result.audioUrl;
+      }
+    },
+    
+    onRecordingProgress: (volume) => {
+      // Update volume indicator (optional)
+      // This could be used to show a visual indicator of audio level
+    },
+    
+    onError: (error) => {
+      console.error('Voice recording error:', error);
+      alert('Error recording audio: ' + error.message);
+      
+      // Reset UI
+      recordingStatus.classList.remove('active');
+      recordingStatus.innerHTML = '&lt;span>Recording failed. Try again.&lt;/span>';
+      recordButton.innerHTML = '&lt;i class="fas fa-microphone">&lt;/i> Record Response';
+      recordButton.classList.remove('btn-danger');
+    }
+  });
+  
+  // Add click handler to record button if it exists
+  if (recordButton) {
+    recordButton.addEventListener('click', () => {
+      if (voiceHandler.isRecording) {
+        voiceHandler.stopRecording();
+      } else {
+        voiceHandler.startRecording();
+      }
+    });
+  }
+});
+
+// Export for use in other modules
+window.voiceHandler = voiceHandler;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a> on Thu Mar 27 2025 10:49:24 GMT-0600 (Central Standard Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>backend/models/Feedback.js - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Feedback.html">Feedback</a><ul class='methods'><li data-type='method'><a href="Feedback.html#.create">create</a></li><li data-type='method'><a href="Feedback.html#.getById">getById</a></li><li data-type='method'><a href="Feedback.html#.getBySessionId">getBySessionId</a></li><li data-type='method'><a href="Feedback.html#.getByUserId">getByUserId</a></li><li data-type='method'><a href="Feedback.html#.getUserErrorPatterns">getUserErrorPatterns</a></li><li data-type='method'><a href="Feedback.html#.getUserStats">getUserStats</a></li></ul></li><li><a href="Training.html">Training</a><ul class='methods'><li data-type='method'><a href="Training.html#.completeSession">completeSession</a></li><li data-type='method'><a href="Training.html#.createScenario">createScenario</a></li><li data-type='method'><a href="Training.html#.createSession">createSession</a></li><li data-type='method'><a href="Training.html#.deleteScenario">deleteScenario</a></li><li data-type='method'><a href="Training.html#.getAllScenarios">getAllScenarios</a></li><li data-type='method'><a href="Training.html#.getScenarioById">getScenarioById</a></li><li data-type='method'><a href="Training.html#.getSessionById">getSessionById</a></li><li data-type='method'><a href="Training.html#.getUserSessions">getUserSessions</a></li><li data-type='method'><a href="Training.html#.updateScenario">updateScenario</a></li></ul></li><li><a href="User.html">User</a><ul class='methods'><li data-type='method'><a href="User.html#.authenticate">authenticate</a></li><li data-type='method'><a href="User.html#.create">create</a></li><li data-type='method'><a href="User.html#.delete">delete</a></li><li data-type='method'><a href="User.html#.findAll">findAll</a></li><li data-type='method'><a href="User.html#.findById">findById</a></li><li data-type='method'><a href="User.html#.findByUsername">findByUsername</a></li><li data-type='method'><a href="User.html#.update">update</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#analyzeSessionFeedback">analyzeSessionFeedback</a></li><li><a href="global.html#analyzeTrainingSession">analyzeTrainingSession</a></li><li><a href="global.html#applyAudioFilter">applyAudioFilter</a></li><li><a href="global.html#axios">axios</a></li><li><a href="global.html#calculateSimilarity">calculateSimilarity</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#connectDB">connectDB</a></li><li><a href="global.html#express">express</a></li><li><a href="global.html#generateFeedback">generateFeedback</a></li><li><a href="global.html#generateImprovementSuggestions">generateImprovementSuggestions</a></li><li><a href="global.html#generateMilitaryAudio">generateMilitaryAudio</a></li><li><a href="global.html#generateScenarioAudio">generateScenarioAudio</a></li><li><a href="global.html#generateSpeech">generateSpeech</a></li><li><a href="global.html#getCommonErrorPatterns">getCommonErrorPatterns</a></li><li><a href="global.html#getImprovementAreas">getImprovementAreas</a></li><li><a href="global.html#insert">insert</a></li><li><a href="global.html#levenshteinDistance">levenshteinDistance</a></li><li><a href="global.html#mysql">mysql</a></li><li><a href="global.html#normalizeText">normalizeText</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#postProcessMilitaryTranscription">postProcessMilitaryTranscription</a></li><li><a href="global.html#processMilitaryAudio">processMilitaryAudio</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#queryOne">queryOne</a></li><li><a href="global.html#scoreResponse">scoreResponse</a></li><li><a href="global.html#transcribeAudio">transcribeAudio</a></li><li><a href="global.html#update">update</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">backend/models/Feedback.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Jimmy Yodeler - Military Voice Procedure Trainer
+ * Feedback Model
+ */
+
+const { query, queryOne, insert, update } = require('../db');
+const scoringService = require('../services/scoringService');
+
+/**
+ * Feedback model class
+ */
+class Feedback {
+  /**
+   * Create feedback for a training response
+   * @param {Object} feedbackData - Feedback data
+   * @returns {Promise&lt;Object>} - Created feedback
+   */
+  static async create(feedbackData) {
+    try {
+      // Validate required fields
+      if (!feedbackData.trainingSessionId || 
+          feedbackData.promptIndex === undefined || 
+          !feedbackData.userResponse || 
+          !feedbackData.expectedResponse) {
+        throw new Error('Training session ID, prompt index, user response, and expected response are required');
+      }
+      
+      // Score the response if not provided
+      let accuracyScore = feedbackData.accuracyScore;
+      let feedbackText = feedbackData.feedbackText;
+      
+      if (accuracyScore === undefined || feedbackText === undefined) {
+        const scoringResult = await scoringService.scoreResponse(
+          feedbackData.userResponse,
+          feedbackData.expectedResponse
+        );
+        
+        accuracyScore = scoringResult.score;
+        feedbackText = scoringResult.feedback;
+      }
+      
+      // Insert feedback
+      const feedbackId = await insert('feedback', {
+        training_session_id: feedbackData.trainingSessionId,
+        prompt_index: feedbackData.promptIndex,
+        user_response: feedbackData.userResponse,
+        expected_response: feedbackData.expectedResponse,
+        accuracy_score: accuracyScore,
+        feedback_text: feedbackText,
+        created_at: new Date()
+      });
+      
+      // Get created feedback
+      return await this.getById(feedbackId);
+    } catch (error) {
+      console.error('Feedback creation error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get feedback by ID
+   * @param {number} id - Feedback ID
+   * @returns {Promise&lt;Object|null>} - Feedback or null
+   */
+  static async getById(id) {
+    try {
+      const feedback = await queryOne(
+        `SELECT id, training_session_id, prompt_index, user_response, 
+        expected_response, accuracy_score, feedback_text, created_at
+        FROM feedback
+        WHERE id = ?`,
+        [id]
+      );
+      
+      return feedback;
+    } catch (error) {
+      console.error('Get feedback by ID error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get all feedback for a training session
+   * @param {number} sessionId - Training session ID
+   * @returns {Promise&lt;Array>} - Array of feedback items
+   */
+  static async getBySessionId(sessionId) {
+    try {
+      const feedback = await query(
+        `SELECT id, training_session_id, prompt_index, user_response, 
+        expected_response, accuracy_score, feedback_text, created_at
+        FROM feedback
+        WHERE training_session_id = ?
+        ORDER BY prompt_index ASC`,
+        [sessionId]
+      );
+      
+      return feedback;
+    } catch (error) {
+      console.error('Get feedback by session ID error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get feedback for a user
+   * @param {number} userId - User ID
+   * @param {Object} options - Query options
+   * @returns {Promise&lt;Array>} - Array of feedback items
+   */
+  static async getByUserId(userId, options = {}) {
+    try {
+      let sql = `
+        SELECT f.id, f.training_session_id, f.prompt_index, 
+        f.user_response, f.expected_response, f.accuracy_score, 
+        f.feedback_text, f.created_at,
+        ts.scenario_id, sc.title as scenario_title
+        FROM feedback f
+        JOIN training_sessions ts ON f.training_session_id = ts.id
+        JOIN training_scenarios sc ON ts.scenario_id = sc.id
+        WHERE ts.user_id = ?
+      `;
+      
+      const params = [userId];
+      
+      // Add filters
+      if (options.minScore !== undefined) {
+        sql += ' AND f.accuracy_score >= ?';
+        params.push(options.minScore);
+      }
+      
+      if (options.maxScore !== undefined) {
+        sql += ' AND f.accuracy_score &lt;= ?';
+        params.push(options.maxScore);
+      }
+      
+      if (options.scenarioId) {
+        sql += ' AND ts.scenario_id = ?';
+        params.push(options.scenarioId);
+      }
+      
+      // Add ORDER BY clause
+      sql += ' ORDER BY ' + (options.orderBy || 'f.created_at DESC');
+      
+      // Add LIMIT and OFFSET for pagination
+      if (options.limit) {
+        sql += ' LIMIT ?';
+        params.push(options.limit);
+        
+        if (options.offset) {
+          sql += ' OFFSET ?';
+          params.push(options.offset);
+        }
+      }
+      
+      return await query(sql, params);
+    } catch (error) {
+      console.error('Get feedback by user ID error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Calculate user performance statistics
+   * @param {number} userId - User ID
+   * @returns {Promise&lt;Object>} - Performance statistics
+   */
+  static async getUserStats(userId) {
+    try {
+      const stats = await queryOne(
+        `SELECT 
+          COUNT(DISTINCT ts.id) as total_sessions,
+          AVG(ts.score) as average_score,
+          MAX(ts.score) as highest_score,
+          COUNT(DISTINCT ts.scenario_id) as unique_scenarios,
+          SUM(CASE WHEN ts.status = 'completed' THEN 1 ELSE 0 END) as completed_sessions
+        FROM training_sessions ts
+        WHERE ts.user_id = ?`,
+        [userId]
+      );
+      
+      // Get recent improvement trend
+      const recentSessions = await query(
+        `SELECT ts.id, ts.score, ts.completed_at
+        FROM training_sessions ts
+        WHERE ts.user_id = ? AND ts.status = 'completed'
+        ORDER BY ts.completed_at DESC
+        LIMIT 5`,
+        [userId]
+      );
+      
+      // Calculate improvement trend
+      let improvementTrend = null;
+      if (recentSessions.length >= 2) {
+        const oldestScore = recentSessions[recentSessions.length - 1].score;
+        const newestScore = recentSessions[0].score;
+        improvementTrend = newestScore - oldestScore;
+      }
+      
+      return {
+        totalSessions: stats.total_sessions || 0,
+        completedSessions: stats.completed_sessions || 0,
+        averageScore: stats.average_score || 0,
+        highestScore: stats.highest_score || 0,
+        uniqueScenarios: stats.unique_scenarios || 0,
+        improvementTrend,
+        recentSessions: recentSessions.map(session => ({
+          id: session.id,
+          score: session.score,
+          completedAt: session.completed_at
+        }))
+      };
+    } catch (error) {
+      console.error('Get user stats error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get common error patterns for a user
+   * @param {number} userId - User ID
+   * @returns {Promise&lt;Array>} - Common error patterns
+   */
+  static async getUserErrorPatterns(userId) {
+    try {
+      // Get user's feedback with low scores
+      const lowScoreFeedback = await query(
+        `SELECT f.user_response, f.expected_response, f.accuracy_score
+        FROM feedback f
+        JOIN training_sessions ts ON f.training_session_id = ts.id
+        WHERE ts.user_id = ? AND f.accuracy_score &lt; 0.7
+        ORDER BY f.created_at DESC
+        LIMIT 50`,
+        [userId]
+      );
+      
+      if (lowScoreFeedback.length === 0) {
+        return [];
+      }
+      
+      // Analyze common errors
+      const errorTypes = {
+        missingCallsigns: 0,
+        incorrectPhrasing: 0,
+        missingAcknowledgments: 0,
+        verbosity: 0,
+        phonetics: 0
+      };
+      
+      // Analyze each feedback item
+      for (const item of lowScoreFeedback) {
+        const userResponse = item.user_response.toLowerCase();
+        const expectedResponse = item.expected_response.toLowerCase();
+        
+        // Check for missing callsigns
+        const expectedCallsigns = expectedResponse.match(/\b[a-z]+-?[0-9]+\b/g) || [];
+        const userCallsigns = userResponse.match(/\b[a-z]+-?[0-9]+\b/g) || [];
+        
+        if (expectedCallsigns.length > userCallsigns.length) {
+          errorTypes.missingCallsigns++;
+        }
+        
+        // Check for missing acknowledgments
+        if ((expectedResponse.includes('roger') || expectedResponse.includes('copy') || 
+             expectedResponse.includes('wilco') || expectedResponse.includes('acknowledge')) &amp;&amp; 
+            !(userResponse.includes('roger') || userResponse.includes('copy') || 
+              userResponse.includes('wilco') || userResponse.includes('acknowledge'))) {
+          errorTypes.missingAcknowledgments++;
+        }
+        
+        // Check for verbosity
+        if (userResponse.split(' ').length > expectedResponse.split(' ').length * 1.5) {
+          errorTypes.verbosity++;
+        }
+        
+        // Check for phonetic alphabet usage
+        const phoneticAlphabet = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 
+                                 'golf', 'hotel', 'india', 'juliet', 'kilo', 'lima', 
+                                 'mike', 'november', 'oscar', 'papa', 'quebec', 'romeo', 
+                                 'sierra', 'tango', 'uniform', 'victor', 'whiskey', 
+                                 'xray', 'yankee', 'zulu'];
+        
+        const expectedPhonetics = phoneticAlphabet.filter(word => expectedResponse.includes(word));
+        const userPhonetics = phoneticAlphabet.filter(word => userResponse.includes(word));
+        
+        if (expectedPhonetics.length > userPhonetics.length) {
+          errorTypes.phonetics++;
+        }
+        
+        // Check for incorrect phrasing
+        if (item.accuracy_score &lt; 0.7 &amp;&amp; 
+            errorTypes.missingCallsigns === 0 &amp;&amp; 
+            errorTypes.missingAcknowledgments === 0 &amp;&amp; 
+            errorTypes.verbosity === 0 &amp;&amp; 
+            errorTypes.phonetics === 0) {
+          errorTypes.incorrectPhrasing++;
+        }
+      }
+      
+      // Convert to array and sort by frequency
+      const errorPatterns = Object.entries(errorTypes)
+        .map(([type, count]) => ({ type, count }))
+        .filter(error => error.count > 0)
+        .sort((a, b) => b.count - a.count);
+      
+      return errorPatterns;
+    } catch (error) {
+      console.error('Get user error patterns error:', error);
+      throw error;
+    }
+  }
+}
+
+module.exports = Feedback;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a> on Thu Mar 27 2025 10:49:24 GMT-0600 (Central Standard Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

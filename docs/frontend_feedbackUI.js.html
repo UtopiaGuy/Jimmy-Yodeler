@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>frontend/feedbackUI.js - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Feedback.html">Feedback</a><ul class='methods'><li data-type='method'><a href="Feedback.html#.create">create</a></li><li data-type='method'><a href="Feedback.html#.getById">getById</a></li><li data-type='method'><a href="Feedback.html#.getBySessionId">getBySessionId</a></li><li data-type='method'><a href="Feedback.html#.getByUserId">getByUserId</a></li><li data-type='method'><a href="Feedback.html#.getUserErrorPatterns">getUserErrorPatterns</a></li><li data-type='method'><a href="Feedback.html#.getUserStats">getUserStats</a></li></ul></li><li><a href="Training.html">Training</a><ul class='methods'><li data-type='method'><a href="Training.html#.completeSession">completeSession</a></li><li data-type='method'><a href="Training.html#.createScenario">createScenario</a></li><li data-type='method'><a href="Training.html#.createSession">createSession</a></li><li data-type='method'><a href="Training.html#.deleteScenario">deleteScenario</a></li><li data-type='method'><a href="Training.html#.getAllScenarios">getAllScenarios</a></li><li data-type='method'><a href="Training.html#.getScenarioById">getScenarioById</a></li><li data-type='method'><a href="Training.html#.getSessionById">getSessionById</a></li><li data-type='method'><a href="Training.html#.getUserSessions">getUserSessions</a></li><li data-type='method'><a href="Training.html#.updateScenario">updateScenario</a></li></ul></li><li><a href="User.html">User</a><ul class='methods'><li data-type='method'><a href="User.html#.authenticate">authenticate</a></li><li data-type='method'><a href="User.html#.create">create</a></li><li data-type='method'><a href="User.html#.delete">delete</a></li><li data-type='method'><a href="User.html#.findAll">findAll</a></li><li data-type='method'><a href="User.html#.findById">findById</a></li><li data-type='method'><a href="User.html#.findByUsername">findByUsername</a></li><li data-type='method'><a href="User.html#.update">update</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#analyzeSessionFeedback">analyzeSessionFeedback</a></li><li><a href="global.html#analyzeTrainingSession">analyzeTrainingSession</a></li><li><a href="global.html#applyAudioFilter">applyAudioFilter</a></li><li><a href="global.html#axios">axios</a></li><li><a href="global.html#calculateSimilarity">calculateSimilarity</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#connectDB">connectDB</a></li><li><a href="global.html#express">express</a></li><li><a href="global.html#generateFeedback">generateFeedback</a></li><li><a href="global.html#generateImprovementSuggestions">generateImprovementSuggestions</a></li><li><a href="global.html#generateMilitaryAudio">generateMilitaryAudio</a></li><li><a href="global.html#generateScenarioAudio">generateScenarioAudio</a></li><li><a href="global.html#generateSpeech">generateSpeech</a></li><li><a href="global.html#getCommonErrorPatterns">getCommonErrorPatterns</a></li><li><a href="global.html#getImprovementAreas">getImprovementAreas</a></li><li><a href="global.html#insert">insert</a></li><li><a href="global.html#levenshteinDistance">levenshteinDistance</a></li><li><a href="global.html#mysql">mysql</a></li><li><a href="global.html#normalizeText">normalizeText</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#postProcessMilitaryTranscription">postProcessMilitaryTranscription</a></li><li><a href="global.html#processMilitaryAudio">processMilitaryAudio</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#queryOne">queryOne</a></li><li><a href="global.html#scoreResponse">scoreResponse</a></li><li><a href="global.html#transcribeAudio">transcribeAudio</a></li><li><a href="global.html#update">update</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">frontend/feedbackUI.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Jimmy Yodeler - Military Voice Procedure Trainer
+ * Feedback UI Module
+ * 
+ * This module handles the visualization and interaction with feedback data,
+ * including charts, statistics, and improvement suggestions.
+ */
+
+// Feedback UI Class
+class FeedbackUI {
+  constructor() {
+    // Chart instances
+    this.performanceChart = null;
+    this.accuracyDistributionChart = null;
+    
+    // DOM Elements
+    this.elements = {
+      // Performance chart
+      performanceChartEl: document.getElementById('performanceChart'),
+      
+      // Improvement areas
+      improvementList: document.getElementById('improvementList'),
+      
+      // Recent feedback
+      recentFeedbackList: document.getElementById('recentFeedbackList'),
+      
+      // Session results
+      finalScore: document.getElementById('finalScore'),
+      resultScenarioTitle: document.getElementById('resultScenarioTitle'),
+      resultDifficulty: document.getElementById('resultDifficulty'),
+      resultDuration: document.getElementById('resultDuration'),
+      resultTimestamp: document.getElementById('resultTimestamp'),
+      responseBreakdownList: document.getElementById('responseBreakdownList')
+    };
+    
+    // Bind methods
+    this.initCharts = this.initCharts.bind(this);
+    this.updatePerformanceChart = this.updatePerformanceChart.bind(this);
+    this.renderImprovementAreas = this.renderImprovementAreas.bind(this);
+    this.renderSessionResults = this.renderSessionResults.bind(this);
+    this.renderResponseBreakdown = this.renderResponseBreakdown.bind(this);
+    this.getScoreClass = this.getScoreClass.bind(this);
+  }
+  
+  /**
+   * Initialize the feedback UI
+   */
+  init() {
+    // Initialize charts if Chart.js is available
+    if (window.Chart &amp;&amp; this.elements.performanceChartEl) {
+      this.initCharts();
+    }
+    
+    // Set up event listeners
+    this.setupEventListeners();
+    
+    return this;
+  }
+  
+  /**
+   * Set up event listeners
+   */
+  setupEventListeners() {
+    // Add event listeners for interactive elements
+    document.addEventListener('DOMContentLoaded', () => {
+      // Example: Toggle visibility of detailed feedback
+      document.querySelectorAll('.feedback-item').forEach(item => {
+        const header = item.querySelector('.feedback-header');
+        const details = item.querySelector('.feedback-details');
+        
+        if (header &amp;&amp; details) {
+          header.addEventListener('click', () => {
+            details.classList.toggle('expanded');
+          });
+        }
+      });
+    });
+  }
+  
+  /**
+   * Initialize charts
+   */
+  initCharts() {
+    // Performance chart (line chart showing progress over time)
+    if (this.elements.performanceChartEl) {
+      const ctx = this.elements.performanceChartEl.getContext('2d');
+      
+      this.performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [], // Will be populated with dates
+          datasets: [{
+            label: 'Session Score',
+            data: [], // Will be populated with scores
+            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+            borderColor: 'rgba(52, 152, 219, 1)',
+            borderWidth: 2,
+            pointBackgroundColor: 'rgba(52, 152, 219, 1)',
+            pointRadius: 4,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: 'Score'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Date'
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+  
+  /**
+   * Update performance chart with new data
+   * @param {Array} sessions - Array of training sessions
+   */
+  updatePerformanceChart(sessions) {
+    if (!this.performanceChart || !sessions || sessions.length === 0) {
+      return;
+    }
+    
+    // Sort sessions by date
+    const sortedSessions = [...sessions].sort((a, b) => {
+      return new Date(a.completedAt) - new Date(b.completedAt);
+    });
+    
+    // Extract dates and scores
+    const labels = sortedSessions.map(session => {
+      return new Date(session.completedAt).toLocaleDateString();
+    });
+    
+    const scores = sortedSessions.map(session => {
+      return session.score !== null ? Math.round(session.score) : null;
+    });
+    
+    // Update chart data
+    this.performanceChart.data.labels = labels;
+    this.performanceChart.data.datasets[0].data = scores;
+    
+    // Update chart
+    this.performanceChart.update();
+  }
+  
+  /**
+   * Render improvement areas
+   * @param {Array} areas - Array of improvement areas
+   */
+  renderImprovementAreas(areas) {
+    if (!this.elements.improvementList) {
+      return;
+    }
+    
+    if (!areas || areas.length === 0) {
+      this.elements.improvementList.innerHTML = `
+        &lt;div class="empty-state">
+          &lt;i class="fas fa-check-circle">&lt;/i>
+          &lt;span>No specific improvement areas identified yet&lt;/span>
+        &lt;/div>
+      `;
+      return;
+    }
+    
+    // Render improvement areas
+    this.elements.improvementList.innerHTML = areas.map(area => `
+      &lt;div class="improvement-item">
+        &lt;div class="improvement-issue">${area.issue}&lt;/div>
+        &lt;div class="improvement-suggestion">${area.suggestion}&lt;/div>
+      &lt;/div>
+    `).join('');
+  }
+  
+  /**
+   * Render session results
+   * @param {Object} session - Training session data
+   */
+  renderSessionResults(session) {
+    if (!session) {
+      return;
+    }
+    
+    // Update results UI
+    if (this.elements.finalScore) {
+      this.elements.finalScore.textContent = Math.round(session.score);
+    }
+    
+    if (this.elements.resultScenarioTitle) {
+      this.elements.resultScenarioTitle.textContent = session.scenarioTitle;
+    }
+    
+    if (this.elements.resultDifficulty) {
+      this.elements.resultDifficulty.textContent = session.difficulty.charAt(0).toUpperCase() + session.difficulty.slice(1);
+    }
+    
+    // Calculate duration
+    if (this.elements.resultDuration &amp;&amp; session.startedAt &amp;&amp; session.completedAt) {
+      const startTime = new Date(session.startedAt);
+      const endTime = new Date(session.completedAt);
+      const durationMs = endTime - startTime;
+      const durationMinutes = Math.floor(durationMs / 60000);
+      const durationSeconds = Math.floor((durationMs % 60000) / 1000);
+      this.elements.resultDuration.textContent = `${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Format timestamp
+    if (this.elements.resultTimestamp &amp;&amp; session.completedAt) {
+      this.elements.resultTimestamp.textContent = new Date(session.completedAt).toLocaleString();
+    }
+  }
+  
+  /**
+   * Render response breakdown
+   * @param {Array} feedback - Array of feedback items
+   * @param {Object} scenario - Scenario data with script content
+   */
+  renderResponseBreakdown(feedback, scenario) {
+    if (!this.elements.responseBreakdownList || !feedback || !scenario) {
+      return;
+    }
+    
+    this.elements.responseBreakdownList.innerHTML = '';
+    
+    feedback.forEach((item, index) => {
+      const scorePercent = Math.round(item.accuracy_score * 100);
+      const scoreClass = this.getScoreClass(item.accuracy_score);
+      
+      const breakdownItem = document.createElement('div');
+      breakdownItem.className = 'breakdown-item';
+      breakdownItem.innerHTML = `
+        &lt;div class="breakdown-prompt">
+          &lt;strong>Prompt ${index + 1}:&lt;/strong> ${scenario.script_content[item.prompt_index]}
+        &lt;/div>
+        &lt;div class="feedback-score ${scoreClass}">${scorePercent}% Accuracy&lt;/div>
+        &lt;div class="feedback-text">${item.feedback_text}&lt;/div>
+        &lt;div class="response-comparison">
+          &lt;div class="user-said">
+            &lt;strong>You said:&lt;/strong>&lt;br>
+            ${item.user_response}
+          &lt;/div>
+          &lt;div class="expected-response">
+            &lt;strong>Expected:&lt;/strong>&lt;br>
+            ${item.expected_response}
+          &lt;/div>
+        &lt;/div>
+      `;
+      
+      this.elements.responseBreakdownList.appendChild(breakdownItem);
+    });
+  }
+  
+  /**
+   * Get CSS class for score
+   * @param {number} score - Accuracy score (0-1)
+   * @returns {string} - CSS class name
+   */
+  getScoreClass(score) {
+    if (score >= 0.9) {
+      return 'score-high';
+    } else if (score >= 0.7) {
+      return 'score-medium';
+    } else {
+      return 'score-low';
+    }
+  }
+  
+  /**
+   * Create a visual comparison between user response and expected response
+   * @param {string} userResponse - User's response
+   * @param {string} expectedResponse - Expected response
+   * @returns {string} - HTML for visual comparison
+   */
+  createVisualComparison(userResponse, expectedResponse) {
+    // Normalize responses
+    const normalizeText = (text) => {
+      return text
+        .toLowerCase()
+        .replace(/[.,\/#!$%\^&amp;\*;:{}=\-_`~()]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+    
+    const normalizedUser = normalizeText(userResponse);
+    const normalizedExpected = normalizeText(expectedResponse);
+    
+    // Split into words
+    const userWords = normalizedUser.split(' ');
+    const expectedWords = normalizedExpected.split(' ');
+    
+    // Find matching, missing, and extra words
+    const matchingWords = userWords.filter(word => expectedWords.includes(word));
+    const missingWords = expectedWords.filter(word => !userWords.includes(word));
+    const extraWords = userWords.filter(word => !expectedWords.includes(word));
+    
+    // Create HTML for comparison
+    let comparisonHtml = '&lt;div class="visual-comparison">';
+    
+    // User response with highlighting
+    comparisonHtml += '&lt;div class="comparison-user">';
+    comparisonHtml += '&lt;strong>Your Response:&lt;/strong>&lt;br>';
+    comparisonHtml += userWords.map(word => {
+      if (expectedWords.includes(word)) {
+        return `&lt;span class="word-match">${word}&lt;/span>`;
+      } else {
+        return `&lt;span class="word-extra">${word}&lt;/span>`;
+      }
+    }).join(' ');
+    comparisonHtml += '&lt;/div>';
+    
+    // Expected response with highlighting
+    comparisonHtml += '&lt;div class="comparison-expected">';
+    comparisonHtml += '&lt;strong>Expected Response:&lt;/strong>&lt;br>';
+    comparisonHtml += expectedWords.map(word => {
+      if (userWords.includes(word)) {
+        return `&lt;span class="word-match">${word}&lt;/span>`;
+      } else {
+        return `&lt;span class="word-missing">${word}&lt;/span>`;
+      }
+    }).join(' ');
+    comparisonHtml += '&lt;/div>';
+    
+    // Summary
+    comparisonHtml += '&lt;div class="comparison-summary">';
+    comparisonHtml += `&lt;div>&lt;span class="match-count">${matchingWords.length}&lt;/span> matching words&lt;/div>`;
+    comparisonHtml += `&lt;div>&lt;span class="missing-count">${missingWords.length}&lt;/span> missing words&lt;/div>`;
+    comparisonHtml += `&lt;div>&lt;span class="extra-count">${extraWords.length}&lt;/span> extra words&lt;/div>`;
+    comparisonHtml += '&lt;/div>';
+    
+    comparisonHtml += '&lt;/div>';
+    
+    return comparisonHtml;
+  }
+}
+
+// Create and export a singleton instance
+const feedbackUI = new FeedbackUI();
+
+// Initialize feedback UI when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+  feedbackUI.init();
+});
+
+// Export for use in other modules
+window.feedbackUI = feedbackUI;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a> on Thu Mar 27 2025 10:49:24 GMT-0600 (Central Standard Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

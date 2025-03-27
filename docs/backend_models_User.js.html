@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>backend/models/User.js - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Feedback.html">Feedback</a><ul class='methods'><li data-type='method'><a href="Feedback.html#.create">create</a></li><li data-type='method'><a href="Feedback.html#.getById">getById</a></li><li data-type='method'><a href="Feedback.html#.getBySessionId">getBySessionId</a></li><li data-type='method'><a href="Feedback.html#.getByUserId">getByUserId</a></li><li data-type='method'><a href="Feedback.html#.getUserErrorPatterns">getUserErrorPatterns</a></li><li data-type='method'><a href="Feedback.html#.getUserStats">getUserStats</a></li></ul></li><li><a href="Training.html">Training</a><ul class='methods'><li data-type='method'><a href="Training.html#.completeSession">completeSession</a></li><li data-type='method'><a href="Training.html#.createScenario">createScenario</a></li><li data-type='method'><a href="Training.html#.createSession">createSession</a></li><li data-type='method'><a href="Training.html#.deleteScenario">deleteScenario</a></li><li data-type='method'><a href="Training.html#.getAllScenarios">getAllScenarios</a></li><li data-type='method'><a href="Training.html#.getScenarioById">getScenarioById</a></li><li data-type='method'><a href="Training.html#.getSessionById">getSessionById</a></li><li data-type='method'><a href="Training.html#.getUserSessions">getUserSessions</a></li><li data-type='method'><a href="Training.html#.updateScenario">updateScenario</a></li></ul></li><li><a href="User.html">User</a><ul class='methods'><li data-type='method'><a href="User.html#.authenticate">authenticate</a></li><li data-type='method'><a href="User.html#.create">create</a></li><li data-type='method'><a href="User.html#.delete">delete</a></li><li data-type='method'><a href="User.html#.findAll">findAll</a></li><li data-type='method'><a href="User.html#.findById">findById</a></li><li data-type='method'><a href="User.html#.findByUsername">findByUsername</a></li><li data-type='method'><a href="User.html#.update">update</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#analyzeSessionFeedback">analyzeSessionFeedback</a></li><li><a href="global.html#analyzeTrainingSession">analyzeTrainingSession</a></li><li><a href="global.html#applyAudioFilter">applyAudioFilter</a></li><li><a href="global.html#axios">axios</a></li><li><a href="global.html#calculateSimilarity">calculateSimilarity</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#connectDB">connectDB</a></li><li><a href="global.html#express">express</a></li><li><a href="global.html#generateFeedback">generateFeedback</a></li><li><a href="global.html#generateImprovementSuggestions">generateImprovementSuggestions</a></li><li><a href="global.html#generateMilitaryAudio">generateMilitaryAudio</a></li><li><a href="global.html#generateScenarioAudio">generateScenarioAudio</a></li><li><a href="global.html#generateSpeech">generateSpeech</a></li><li><a href="global.html#getCommonErrorPatterns">getCommonErrorPatterns</a></li><li><a href="global.html#getImprovementAreas">getImprovementAreas</a></li><li><a href="global.html#insert">insert</a></li><li><a href="global.html#levenshteinDistance">levenshteinDistance</a></li><li><a href="global.html#mysql">mysql</a></li><li><a href="global.html#normalizeText">normalizeText</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#postProcessMilitaryTranscription">postProcessMilitaryTranscription</a></li><li><a href="global.html#processMilitaryAudio">processMilitaryAudio</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#queryOne">queryOne</a></li><li><a href="global.html#scoreResponse">scoreResponse</a></li><li><a href="global.html#transcribeAudio">transcribeAudio</a></li><li><a href="global.html#update">update</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">backend/models/User.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Jimmy Yodeler - Military Voice Procedure Trainer
+ * User Model
+ */
+
+const { query, queryOne, insert, update } = require('../db');
+const bcrypt = require('bcrypt');
+
+/**
+ * User model class
+ */
+class User {
+  /**
+   * Create a new user
+   * @param {Object} userData - User data
+   * @returns {Promise&lt;Object>} - Created user
+   */
+  static async create(userData) {
+    try {
+      // Check if username already exists
+      const existingUser = await queryOne(
+        'SELECT id FROM users WHERE username = ?',
+        [userData.username]
+      );
+      
+      if (existingUser) {
+        throw new Error('Username already exists');
+      }
+      
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(userData.password, salt);
+      
+      // Insert new user
+      const userId = await insert('users', {
+        username: userData.username,
+        password: hashedPassword,
+        email: userData.email,
+        first_name: userData.firstName || null,
+        last_name: userData.lastName || null,
+        role: userData.role || 'trainee',
+        created_at: new Date()
+      });
+      
+      // Get created user
+      return await this.findById(userId);
+    } catch (error) {
+      console.error('User creation error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Find user by ID
+   * @param {number} id - User ID
+   * @returns {Promise&lt;Object|null>} - User object or null
+   */
+  static async findById(id) {
+    try {
+      const user = await queryOne(
+        `SELECT id, username, email, first_name, last_name, role, created_at,
+        (SELECT COUNT(*) FROM training_sessions WHERE user_id = users.id) as session_count,
+        (SELECT AVG(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as avg_score,
+        (SELECT COUNT(DISTINCT scenario_id) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as unique_scenarios,
+        (SELECT MAX(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as highest_score
+        FROM users WHERE id = ?`,
+        [id]
+      );
+      
+      if (!user) {
+        return null;
+      }
+      
+      // Format user data
+      return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role,
+        createdAt: user.created_at,
+        stats: {
+          sessionCount: user.session_count,
+          averageScore: user.avg_score || 0,
+          uniqueScenarios: user.unique_scenarios || 0,
+          highestScore: user.highest_score || 0
+        }
+      };
+    } catch (error) {
+      console.error('Find user by ID error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Find user by username
+   * @param {string} username - Username
+   * @returns {Promise&lt;Object|null>} - User object or null
+   */
+  static async findByUsername(username) {
+    try {
+      const user = await queryOne(
+        'SELECT id, username, password, email, first_name, last_name, role, created_at FROM users WHERE username = ?',
+        [username]
+      );
+      
+      if (!user) {
+        return null;
+      }
+      
+      // Format user data
+      return {
+        id: user.id,
+        username: user.username,
+        password: user.password, // Hashed password for authentication
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role,
+        createdAt: user.created_at
+      };
+    } catch (error) {
+      console.error('Find user by username error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Update user
+   * @param {number} id - User ID
+   * @param {Object} userData - User data to update
+   * @returns {Promise&lt;Object>} - Updated user
+   */
+  static async update(id, userData) {
+    try {
+      // Prepare update data
+      const updateData = {};
+      
+      if (userData.email) updateData.email = userData.email;
+      if (userData.firstName !== undefined) updateData.first_name = userData.firstName;
+      if (userData.lastName !== undefined) updateData.last_name = userData.lastName;
+      if (userData.role) updateData.role = userData.role;
+      
+      // Update password if provided
+      if (userData.password) {
+        const salt = await bcrypt.genSalt(10);
+        updateData.password = await bcrypt.hash(userData.password, salt);
+      }
+      
+      // Update user
+      const result = await update(
+        'users',
+        updateData,
+        'id = ?',
+        [id]
+      );
+      
+      if (result === 0) {
+        throw new Error('User not found');
+      }
+      
+      // Get updated user
+      return await this.findById(id);
+    } catch (error) {
+      console.error('Update user error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Delete user
+   * @param {number} id - User ID
+   * @returns {Promise&lt;boolean>} - Success status
+   */
+  static async delete(id) {
+    try {
+      // Check if user exists
+      const user = await queryOne(
+        'SELECT id FROM users WHERE id = ?',
+        [id]
+      );
+      
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // Delete user's training sessions and feedback
+      await query('DELETE FROM feedback WHERE training_session_id IN (SELECT id FROM training_sessions WHERE user_id = ?)', [id]);
+      await query('DELETE FROM training_sessions WHERE user_id = ?', [id]);
+      
+      // Delete user
+      await query('DELETE FROM users WHERE id = ?', [id]);
+      
+      return true;
+    } catch (error) {
+      console.error('Delete user error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Find all users
+   * @param {Object} options - Query options
+   * @returns {Promise&lt;Array>} - Array of users
+   */
+  static async findAll(options = {}) {
+    try {
+      let sql = `
+        SELECT id, username, email, first_name, last_name, role, created_at,
+        (SELECT COUNT(*) FROM training_sessions WHERE user_id = users.id) as session_count,
+        (SELECT AVG(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as avg_score,
+        (SELECT COUNT(DISTINCT scenario_id) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as unique_scenarios,
+        (SELECT MAX(score) FROM training_sessions WHERE user_id = users.id AND status = 'completed') as highest_score
+        FROM users
+      `;
+      
+      const params = [];
+      
+      // Add WHERE clause if role filter is provided
+      if (options.role) {
+        sql += ' WHERE role = ?';
+        params.push(options.role);
+      }
+      
+      // Add ORDER BY clause
+      sql += ' ORDER BY ' + (options.orderBy || 'id DESC');
+      
+      // Add LIMIT and OFFSET for pagination
+      if (options.limit) {
+        sql += ' LIMIT ?';
+        params.push(options.limit);
+        
+        if (options.offset) {
+          sql += ' OFFSET ?';
+          params.push(options.offset);
+        }
+      }
+      
+      const users = await query(sql, params);
+      
+      // Format user data
+      return users.map(user => ({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role,
+        createdAt: user.created_at,
+        stats: {
+          sessionCount: user.session_count,
+          averageScore: user.avg_score || 0,
+          uniqueScenarios: user.unique_scenarios || 0,
+          highestScore: user.highest_score || 0
+        }
+      }));
+    } catch (error) {
+      console.error('Find all users error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Authenticate user
+   * @param {string} username - Username
+   * @param {string} password - Password
+   * @returns {Promise&lt;Object|null>} - Authenticated user or null
+   */
+  static async authenticate(username, password) {
+    try {
+      // Find user by username
+      const user = await this.findByUsername(username);
+      
+      if (!user) {
+        return null;
+      }
+      
+      // Check password
+      const isMatch = await bcrypt.compare(password, user.password);
+      
+      if (!isMatch) {
+        return null;
+      }
+      
+      // Remove password from user object
+      delete user.password;
+      
+      return user;
+    } catch (error) {
+      console.error('User authentication error:', error);
+      throw error;
+    }
+  }
+}
+
+module.exports = User;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a> on Thu Mar 27 2025 10:49:24 GMT-0600 (Central Standard Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

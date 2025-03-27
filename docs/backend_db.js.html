@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>backend/db.js - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Feedback.html">Feedback</a><ul class='methods'><li data-type='method'><a href="Feedback.html#.create">create</a></li><li data-type='method'><a href="Feedback.html#.getById">getById</a></li><li data-type='method'><a href="Feedback.html#.getBySessionId">getBySessionId</a></li><li data-type='method'><a href="Feedback.html#.getByUserId">getByUserId</a></li><li data-type='method'><a href="Feedback.html#.getUserErrorPatterns">getUserErrorPatterns</a></li><li data-type='method'><a href="Feedback.html#.getUserStats">getUserStats</a></li></ul></li><li><a href="Training.html">Training</a><ul class='methods'><li data-type='method'><a href="Training.html#.completeSession">completeSession</a></li><li data-type='method'><a href="Training.html#.createScenario">createScenario</a></li><li data-type='method'><a href="Training.html#.createSession">createSession</a></li><li data-type='method'><a href="Training.html#.deleteScenario">deleteScenario</a></li><li data-type='method'><a href="Training.html#.getAllScenarios">getAllScenarios</a></li><li data-type='method'><a href="Training.html#.getScenarioById">getScenarioById</a></li><li data-type='method'><a href="Training.html#.getSessionById">getSessionById</a></li><li data-type='method'><a href="Training.html#.getUserSessions">getUserSessions</a></li><li data-type='method'><a href="Training.html#.updateScenario">updateScenario</a></li></ul></li><li><a href="User.html">User</a><ul class='methods'><li data-type='method'><a href="User.html#.authenticate">authenticate</a></li><li data-type='method'><a href="User.html#.create">create</a></li><li data-type='method'><a href="User.html#.delete">delete</a></li><li data-type='method'><a href="User.html#.findAll">findAll</a></li><li data-type='method'><a href="User.html#.findById">findById</a></li><li data-type='method'><a href="User.html#.findByUsername">findByUsername</a></li><li data-type='method'><a href="User.html#.update">update</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#analyzeSessionFeedback">analyzeSessionFeedback</a></li><li><a href="global.html#analyzeTrainingSession">analyzeTrainingSession</a></li><li><a href="global.html#applyAudioFilter">applyAudioFilter</a></li><li><a href="global.html#axios">axios</a></li><li><a href="global.html#calculateSimilarity">calculateSimilarity</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#connectDB">connectDB</a></li><li><a href="global.html#express">express</a></li><li><a href="global.html#generateFeedback">generateFeedback</a></li><li><a href="global.html#generateImprovementSuggestions">generateImprovementSuggestions</a></li><li><a href="global.html#generateMilitaryAudio">generateMilitaryAudio</a></li><li><a href="global.html#generateScenarioAudio">generateScenarioAudio</a></li><li><a href="global.html#generateSpeech">generateSpeech</a></li><li><a href="global.html#getCommonErrorPatterns">getCommonErrorPatterns</a></li><li><a href="global.html#getImprovementAreas">getImprovementAreas</a></li><li><a href="global.html#insert">insert</a></li><li><a href="global.html#levenshteinDistance">levenshteinDistance</a></li><li><a href="global.html#mysql">mysql</a></li><li><a href="global.html#normalizeText">normalizeText</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#postProcessMilitaryTranscription">postProcessMilitaryTranscription</a></li><li><a href="global.html#processMilitaryAudio">processMilitaryAudio</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#queryOne">queryOne</a></li><li><a href="global.html#scoreResponse">scoreResponse</a></li><li><a href="global.html#transcribeAudio">transcribeAudio</a></li><li><a href="global.html#update">update</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">backend/db.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Jimmy Yodeler - Military Voice Procedure Trainer
+ * Database Connection Module
+ */
+
+const mysql = require('mysql2/promise');
+const config = require('./config');
+
+// Create a connection pool
+const pool = mysql.createPool({
+  host: config.DB.HOST,
+  user: config.DB.USER,
+  password: config.DB.PASSWORD,
+  database: config.DB.NAME,
+  port: config.DB.PORT,
+  waitForConnections: true,
+  connectionLimit: config.DB.CONNECTION_LIMIT,
+  queueLimit: 0
+});
+
+/**
+ * Connect to the database and verify connection
+ * @returns {Promise&lt;void>}
+ */
+async function connectDB() {
+  try {
+    // Test the connection
+    const connection = await pool.getConnection();
+    console.log(`Connected to MySQL database: ${config.DB.NAME}`);
+    connection.release();
+    return true;
+  } catch (error) {
+    console.error('Database connection error:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Execute a SQL query with parameters
+ * @param {string} sql - SQL query string
+ * @param {Array} params - Query parameters
+ * @returns {Promise&lt;Array>} - Query results
+ */
+async function query(sql, params = []) {
+  try {
+    const [results] = await pool.execute(sql, params);
+    return results;
+  } catch (error) {
+    console.error('Database query error:', error.message);
+    console.error('Query:', sql);
+    console.error('Parameters:', params);
+    throw error;
+  }
+}
+
+/**
+ * Get a single row from a query
+ * @param {string} sql - SQL query string
+ * @param {Array} params - Query parameters
+ * @returns {Promise&lt;Object|null>} - Single row or null
+ */
+async function queryOne(sql, params = []) {
+  const results = await query(sql, params);
+  return results.length > 0 ? results[0] : null;
+}
+
+/**
+ * Insert a record and return the inserted ID
+ * @param {string} table - Table name
+ * @param {Object} data - Data to insert
+ * @returns {Promise&lt;number>} - Inserted ID
+ */
+async function insert(table, data) {
+  try {
+    // Build columns and placeholders for the query
+    const columns = Object.keys(data);
+    const placeholders = columns.map(() => '?').join(', ');
+    const values = Object.values(data);
+    
+    // Construct the SQL query with explicit placeholders
+    const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
+    
+    const [result] = await pool.execute(sql, values);
+    return result.insertId;
+  } catch (error) {
+    console.error(`Error inserting into ${table}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Update records in a table
+ * @param {string} table - Table name
+ * @param {Object} data - Data to update
+ * @param {string} whereClause - WHERE clause
+ * @param {Array} whereParams - WHERE parameters
+ * @returns {Promise&lt;number>} - Number of affected rows
+ */
+async function update(table, data, whereClause, whereParams = []) {
+  try {
+    const setClauses = [];
+    const setParams = [];
+    
+    // Build SET clause
+    for (const [key, value] of Object.entries(data)) {
+      setClauses.push(`${key} = ?`);
+      setParams.push(value);
+    }
+    
+    const sql = `UPDATE ${table} SET ${setClauses.join(', ')} WHERE ${whereClause}`;
+    const params = [...setParams, ...whereParams];
+    
+    const [result] = await pool.execute(sql, params);
+    return result.affectedRows;
+  } catch (error) {
+    console.error(`Error updating ${table}:`, error.message);
+    throw error;
+  }
+}
+
+module.exports = {
+  connectDB,
+  query,
+  queryOne,
+  insert,
+  update,
+  pool
+};
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a> on Thu Mar 27 2025 10:49:24 GMT-0600 (Central Standard Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
