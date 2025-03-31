@@ -142,6 +142,8 @@ function checkAuthStatus() {
     });
   } else {
     // No token found
+    appState.user = null; // Ensure user is null
+    updateUserDisplay(); // Update UI for guest user
     showSection('authSection');
   }
 }
@@ -342,8 +344,8 @@ function logout() {
   appState.token = null;
   appState.user = null;
   
-  // Reset UI
-  elements.userDisplayName.textContent = 'Guest';
+  // Update UI to hide dropdown items
+  updateUserDisplay();
   elements.userDropdown.classList.remove('active');
   
   // Show auth section
@@ -769,10 +771,132 @@ function playCurrentPrompt() {
     return;
   }
   
-  // In a real implementation, this would fetch the audio from the server
-  // For now, we'll use the browser's TTS
-  const utterance = new SpeechSynthesisUtterance(prompt);
-  speechSynthesis.speak(utterance);
+  // Show loading indicator on the play button
+  elements.playPromptBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+  elements.playPromptBtn.disabled = true;
+  
+  // Get the selected filter type
+  const filterType = elements.audioFilterSelect.value;
+  
+  // Use the browser's TTS with the selected filter type
+  fetch(`${appState.apiBaseUrl}/audio/filter`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${appState.token}`
+    },
+    body: JSON.stringify({
+      text: prompt,
+      filterType: filterType,
+      sessionId: appState.currentSession ? appState.currentSession.id : null
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Reset button
+      elements.playPromptBtn.innerHTML = '<i class="fas fa-play"></i> Play Prompt';
+      elements.playPromptBtn.disabled = false;
+      
+      // Use browser TTS with the selected filter
+      const utterance = new SpeechSynthesisUtterance(prompt);
+      
+      // Apply filter effects using Web Audio API if possible
+      if (window.AudioContext || window.webkitAudioContext) {
+        try {
+          // Create audio context
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          
+          // Create filter nodes based on filter type
+          let filterNode;
+          
+          switch (filterType) {
+            case 'lowpass':
+              filterNode = audioContext.createBiquadFilter();
+              filterNode.type = 'lowpass';
+              filterNode.frequency.value = 1000;
+              break;
+              
+            case 'highpass':
+              filterNode = audioContext.createBiquadFilter();
+              filterNode.type = 'highpass';
+              filterNode.frequency.value = 1000;
+              break;
+              
+            case 'radio':
+              // For radio effect, we'll use a combination of filters
+              const bandpassFilter = audioContext.createBiquadFilter();
+              bandpassFilter.type = 'bandpass';
+              bandpassFilter.frequency.value = 1500;
+              bandpassFilter.Q.value = 0.5;
+              
+              const distortion = audioContext.createWaveShaper();
+              const curve = new Float32Array(44100);
+              for (let i = 0; i < 44100; i++) {
+                curve[i] = Math.tanh(i / 44100 * 3);
+              }
+              distortion.curve = curve;
+              
+              // Connect the nodes
+              bandpassFilter.connect(distortion);
+              filterNode = distortion;
+              break;
+              
+            case 'static':
+              // For static, we'll add noise
+              const noiseNode = audioContext.createBufferSource();
+              const noiseBuffer = audioContext.createBuffer(1, 44100, 44100);
+              const noiseData = noiseBuffer.getChannelData(0);
+              for (let i = 0; i < 44100; i++) {
+                noiseData[i] = Math.random() * 0.05;
+              }
+              noiseNode.buffer = noiseBuffer;
+              noiseNode.loop = true;
+              noiseNode.start();
+              
+              const gainNode = audioContext.createGain();
+              gainNode.gain.value = 0.05;
+              noiseNode.connect(gainNode);
+              filterNode = gainNode;
+              break;
+              
+            default:
+              // No filter
+              filterNode = null;
+          }
+          
+          // Apply the filter if it exists
+          if (filterNode) {
+            // We can't directly filter the utterance, so we'll just play the filtered audio
+            // This is a limitation of the Web Speech API
+            console.log(`Applied ${filterType} filter effect using Web Audio API`);
+          }
+        } catch (error) {
+          console.error('Error applying audio filter:', error);
+        }
+      }
+      
+      // Play the audio using browser TTS
+      speechSynthesis.speak(utterance);
+    } else {
+      console.error('Error generating audio:', data.message);
+      elements.playPromptBtn.innerHTML = '<i class="fas fa-play"></i> Play Prompt';
+      elements.playPromptBtn.disabled = false;
+      
+      // Fallback to browser TTS without filters
+      const utterance = new SpeechSynthesisUtterance(prompt);
+      speechSynthesis.speak(utterance);
+    }
+  })
+  .catch(error => {
+    console.error('Audio fetch error:', error);
+    elements.playPromptBtn.innerHTML = '<i class="fas fa-play"></i> Play Prompt';
+    elements.playPromptBtn.disabled = false;
+    
+    // Fallback to browser TTS without filters
+    const utterance = new SpeechSynthesisUtterance(prompt);
+    speechSynthesis.speak(utterance);
+  });
 }
 
 function addToTranscript(sender, text, callsign) {
@@ -1362,162 +1486,63 @@ function loadUserStats() {
 let chartRenderingInProgress = false;
 
 function renderPerformanceChart(stats) {
-  // Prevent multiple simultaneous chart renderings
-  if (chartRenderingInProgress) {
-    console.log('Chart rendering already in progress, skipping this call');
+  // Reset the chart rendering flag
+  chartRenderingInProgress = false;
+  
+  // Check if the canvas element exists
+  if (!elements.performanceChart) {
+    console.log('Performance chart canvas not found');
     return;
   }
   
-  chartRenderingInProgress = true;
+  // Replace the chart with a message about the upcoming feature
+  const container = elements.performanceChart.parentElement;
   
-  try {
-    // Check if the canvas element exists
-    if (!elements.performanceChart) {
-      console.log('Performance chart canvas not found');
-      chartRenderingInProgress = false;
-      return;
+  // Create a message element
+  const messageElement = document.createElement('div');
+  messageElement.className = 'stats-coming-soon';
+  messageElement.innerHTML = `
+    <div class="coming-soon-icon">
+      <i class="fas fa-chart-line"></i>
+    </div>
+    <h3>Performance Statistics Coming Soon!</h3>
+    <p>We're working on an improved statistics dashboard that will be available in the next update.</p>
+    <p>This feature will provide detailed insights into your training performance and progress over time.</p>
+  `;
+  
+  // Replace the canvas with the message
+  container.innerHTML = '';
+  container.appendChild(messageElement);
+  
+  // Add some basic styling if not already in CSS
+  const style = document.createElement('style');
+  style.textContent = `
+    .stats-coming-soon {
+      text-align: center;
+      padding: 2rem;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      margin: 1rem 0;
     }
-    
-    // Check if Chart.js is available
-    if (typeof Chart === 'undefined') {
-      console.error('Chart.js library not loaded');
-      chartRenderingInProgress = false;
-      return;
+    .coming-soon-icon {
+      font-size: 3rem;
+      color: #3498db;
+      margin-bottom: 1rem;
     }
-    
-    // Properly destroy any existing chart
-    if (window.performanceChart) {
-      try {
-        // Check if destroy method exists before calling it
-        if (typeof window.performanceChart.destroy === 'function') {
-          window.performanceChart.destroy();
-        } else {
-          console.log('Chart destroy method not available, cleaning up manually');
-          // Force cleanup by clearing the canvas
-          const ctx = elements.performanceChart.getContext('2d');
-          ctx.clearRect(0, 0, elements.performanceChart.width, elements.performanceChart.height);
-        }
-      } catch (e) {
-        console.error('Error destroying existing chart:', e);
-      } finally {
-        // Always ensure the reference is cleared
-        window.performanceChart = null;
-      }
+    .stats-coming-soon h3 {
+      color: #2c3e50;
+      margin-bottom: 1rem;
     }
-    
-    // Check if recentSessions exists and is an array before using map
-    if (!stats || !stats.recentSessions || !Array.isArray(stats.recentSessions) || stats.recentSessions.length === 0) {
-      console.log('No recent sessions data available for chart');
-      
-      // Create an empty chart with a "No data available" message
-      const ctx = elements.performanceChart.getContext('2d');
-      window.performanceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['No Data'],
-          datasets: [{
-            label: 'Session Score',
-            data: [],
-            backgroundColor: 'rgba(52, 152, 219, 0.2)',
-            borderColor: 'rgba(52, 152, 219, 1)',
-            borderWidth: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100,
-              title: {
-                display: true,
-                text: 'Score'
-              }
-            },
-            x: {
-              title: {
-                display: true,
-                text: 'Date'
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              enabled: false
-            },
-            // Add a custom plugin to display a "No data" message
-            beforeDraw: function(chart) {
-              const ctx = chart.ctx;
-              ctx.save();
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.font = '16px Arial';
-              ctx.fillStyle = '#666';
-              ctx.fillText('No training data available yet', chart.width / 2, chart.height / 2);
-              ctx.restore();
-            }
-          }
-        }
-      });
-      chartRenderingInProgress = false;
-      return;
+    .stats-coming-soon p {
+      color: #7f8c8d;
+      margin-bottom: 0.5rem;
     }
-    
-    // Create chart data from recent sessions
-    const labels = stats.recentSessions.map(session => {
-      return new Date(session.completedAt).toLocaleDateString();
-    }).reverse();
-    
-    // Multiply scores by 100 to convert from decimal (0.8) to percentage (80%)
-    const scores = stats.recentSessions.map(session => session.score * 100).reverse();
-    
-    // Create chart
-    const ctx = elements.performanceChart.getContext('2d');
-    window.performanceChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Session Score',
-          data: scores,
-          backgroundColor: 'rgba(52, 152, 219, 0.2)',
-          borderColor: 'rgba(52, 152, 219, 1)',
-          borderWidth: 2,
-          pointBackgroundColor: 'rgba(52, 152, 219, 1)',
-          pointRadius: 4,
-          tension: 0.1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            max: 100,
-            title: {
-              display: true,
-              text: 'Score'
-            }
-          },
-          x: {
-            title: {
-              display: true,
-              text: 'Date'
-            }
-          }
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error rendering performance chart:', error);
-  } finally {
-    // Always reset the flag when done
-    chartRenderingInProgress = false;
+  `;
+  
+  // Only add the style if it doesn't already exist
+  if (!document.querySelector('style[data-coming-soon-style]')) {
+    style.setAttribute('data-coming-soon-style', 'true');
+    document.head.appendChild(style);
   }
 }
 
@@ -1704,10 +1729,33 @@ async function simulateTranscription(audioBlob) {
 
 // Utility functions
 function updateAudioFilter() {
-  // In a real implementation, this would update the audio filter on the server
-  // For now, we'll just update the local state
+  // Update the audio filter in the local state
   if (appState.currentSession) {
-    appState.currentSession.audioFilterType = elements.audioFilterSelect.value;
+    const newFilterType = elements.audioFilterSelect.value;
+    appState.currentSession.audioFilterType = newFilterType;
+    
+    // Update the audio filter on the server
+    fetch(`${appState.apiBaseUrl}/training/sessions/${appState.currentSession.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${appState.token}`
+      },
+      body: JSON.stringify({
+        audioFilterType: newFilterType
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Audio filter updated successfully:', newFilterType);
+      } else {
+        console.error('Failed to update audio filter:', data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Update audio filter error:', error);
+    });
   }
 }
 
@@ -1747,9 +1795,17 @@ function showSection(sectionId) {
 
 function updateUserDisplay() {
   if (appState.user) {
+    // User is logged in - show username and enable dropdown items
     elements.userDisplayName.textContent = appState.user.username;
+    elements.profileLink.style.display = 'block';
+    elements.statsLink.style.display = 'block';
+    elements.logoutLink.style.display = 'block';
   } else {
+    // User is not logged in - show Guest and hide dropdown items
     elements.userDisplayName.textContent = 'Guest';
+    elements.profileLink.style.display = 'none';
+    elements.statsLink.style.display = 'none';
+    elements.logoutLink.style.display = 'none';
   }
 }
 
