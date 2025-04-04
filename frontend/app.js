@@ -15,7 +15,11 @@ const appState = {
   transcript: [],
   userCallsign: 'Alpha-1',
   prompterCallsign: 'Command',
-  apiBaseUrl: 'http://localhost:3000/api' // Change this to your API URL
+  apiBaseUrl: window.location.protocol === 'https:' 
+    ? `https://${window.location.hostname}/api` 
+    : (window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000/api' 
+      : `https://${window.location.hostname}/api`) // Use HTTPS by default except for localhost
 };
 
 // DOM Elements
@@ -142,8 +146,6 @@ function checkAuthStatus() {
     });
   } else {
     // No token found
-    appState.user = null; // Ensure user is null
-    updateUserDisplay(); // Update UI for guest user
     showSection('authSection');
   }
 }
@@ -344,8 +346,8 @@ function logout() {
   appState.token = null;
   appState.user = null;
   
-  // Update UI to hide dropdown items
-  updateUserDisplay();
+  // Reset UI
+  elements.userDisplayName.textContent = 'Guest';
   elements.userDropdown.classList.remove('active');
   
   // Show auth section
@@ -1795,17 +1797,9 @@ function showSection(sectionId) {
 
 function updateUserDisplay() {
   if (appState.user) {
-    // User is logged in - show username and enable dropdown items
     elements.userDisplayName.textContent = appState.user.username;
-    elements.profileLink.style.display = 'block';
-    elements.statsLink.style.display = 'block';
-    elements.logoutLink.style.display = 'block';
   } else {
-    // User is not logged in - show Guest and hide dropdown items
     elements.userDisplayName.textContent = 'Guest';
-    elements.profileLink.style.display = 'none';
-    elements.statsLink.style.display = 'none';
-    elements.logoutLink.style.display = 'none';
   }
 }
 

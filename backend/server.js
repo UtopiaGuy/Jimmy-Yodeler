@@ -15,18 +15,27 @@ const userRoutes = require('./routes/userRoutes');
 const trainingRoutes = require('./routes/trainingRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const transcriptionRoutes = require('./routes/transcriptionRoutes');
+const audioRoutes = require('./routes/audioRoutes');
 
 // Initialize Express app
 const app = express();
 const PORT = config.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow requests from any origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Allow credentials (cookies, authorization headers, etc.)
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Serve audio files from audio-cache directory
+app.use('/audio-cache', express.static(path.join(__dirname, '../audio-cache')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -34,6 +43,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/transcribe', transcriptionRoutes);
+app.use('/api/audio', audioRoutes);
 
 // Root route
 app.get('/', (req, res) => {

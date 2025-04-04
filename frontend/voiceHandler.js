@@ -86,6 +86,13 @@ class VoiceHandler {
       this.audioChunks = [];
       this.isRecording = true;
       
+      // Check if we're on HTTPS or localhost
+      const isSecureContext = window.isSecureContext;
+      if (!isSecureContext) {
+        console.warn('Recording may not work because the site is not running in a secure context (HTTPS or localhost)');
+        this.onError(new Error('Microphone access may be blocked because the site is not running in a secure context. Please use HTTPS or localhost.'));
+      }
+      
       // Request microphone access
       this.audioStream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -283,8 +290,11 @@ class VoiceHandler {
       };
       formData.append('options', JSON.stringify(options));
       
+      // Get the API base URL from appState
+      const apiBaseUrl = window.appState ? window.appState.apiBaseUrl : '/api';
+      
       // Send to backend API
-      const response = await fetch('/api/transcribe', {
+      const response = await fetch(`${apiBaseUrl}/transcribe`, {
         method: 'POST',
         body: formData
       });

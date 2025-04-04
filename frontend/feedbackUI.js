@@ -46,10 +46,10 @@ class FeedbackUI {
    * Initialize the feedback UI
    */
   init() {
-    // Initialize charts if Chart.js is available
-    if (window.Chart && this.elements.performanceChartEl) {
-      this.initCharts();
-    }
+    // Chart.js initialization commented out as it's currently unnecessary bloat
+    // if (window.Chart && this.elements.performanceChartEl) {
+    //   this.initCharts();
+    // }
     
     // Set up event listeners
     this.setupEventListeners();
@@ -81,6 +81,8 @@ class FeedbackUI {
    * Initialize charts
    */
   initCharts() {
+    // Performance chart initialization commented out as Chart.js is currently unnecessary bloat
+    /*
     // Performance chart (line chart showing progress over time)
     if (this.elements.performanceChartEl) {
       const ctx = this.elements.performanceChartEl.getContext('2d');
@@ -122,6 +124,7 @@ class FeedbackUI {
         }
       });
     }
+    */
   }
   
   /**
@@ -129,6 +132,8 @@ class FeedbackUI {
    * @param {Array} sessions - Array of training sessions
    */
   updatePerformanceChart(sessions) {
+    // Chart update commented out as Chart.js is currently unnecessary bloat
+    /*
     if (!this.performanceChart || !sessions || sessions.length === 0) {
       return;
     }
@@ -153,6 +158,7 @@ class FeedbackUI {
     
     // Update chart
     this.performanceChart.update();
+    */
   }
   
   /**

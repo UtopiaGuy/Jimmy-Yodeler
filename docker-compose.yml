@@ -1,0 +1,83 @@
+services:
+  app:
+    build: .
+    expose:
+      - "${PORT:-3000}"
+    restart: unless-stopped
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT:-3000}/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+    volumes:
+      - ./audio-cache:/app/audio-cache
+    networks:
+      - internal
+
+  db:
+    image: mysql:8.0
+    container_name: jimmyyodeler-db-1
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-rootpassword}"
+      MYSQL_DATABASE: "${DB_NAME:-jimmy_yodeler}"
+      MYSQL_USER: "${DB_USER:-dbuser}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-dbpassword}"
+    expose:
+      - "3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./jimmy_yodeler_dump.sql:/docker-entrypoint-initdb.d/jimmy_yodeler_dump.sql
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:alpine
+    container_name: jimmyyodeler-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - app
+    command: >
+      /bin/sh -c "
+        while :; do 
+          sleep 6h & wait $${!}; 
+          nginx -s reload; 
+        done & 
+        nginx -g 'daemon off;'
+      "
+    networks:
+      - internal
+
+  certbot:
+    image: certbot/certbot
+    container_name: jimmyyodeler-certbot
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - internal
+
+volumes:
+  mysql_data:
+
+networks:
+  internal:
+    driver: bridge
